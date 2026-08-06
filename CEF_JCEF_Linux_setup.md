@@ -1,0 +1,1374 @@
+# Build CEF and JCEF for the Linux platform
+
+**General information:** 
+- The Windows 11 Enterprise 23H2 with enabled Virtualization will be used as base OS.
+- The Windows Subsystem for Linux version 2 (aka WSL2) will be used for running Linux OS for the building. 
+
+    The Windows Subsystem for Linux (WSL) is a Microsoft feature that lets you run a native GNU/Linux environment—including command-line tools, utilities, and applications—directly on Windows without needing a traditional virtual machine or dual-boot setup.
+    Key Features:
+    - Seamless Integration: Run Linux distributions (like Ubuntu, Debian, or Kali) directly from your Windows desktop.
+    - Optimized Performance: Uses a lightweight Hyper-V virtualized environment for the Linux kernel.
+    - File Sharing: Easily access your Windows files from within your Linux environment and vice versa.
+
+- The latest Ubuntu 26.04 LTS OS will be used for building CEF and JCEF.
+
+## General Pre-requirements
+1. **Enable Virtualization and install WSL**
+
+    - UI way: Press Win + R, type `optionalfeatures`, and hit Enter to open the classic "Windows Features" menu. Alternatively, right-click on the Start menu and select Settings. In the left hand pane of the Settings app, select System. In the right hand System pane, select Optional features.
+    Select **Virtual Machine Platform** and **Windows Subsystem for Linux**, click OK, and reboot OS.
+    - Console way: Open PowerShell or Command Prompt as an Administrator and run the single command `wsl --install`. This automated process enables all required Windows features and downloads the default Ubuntu Linux distribution. Reboot OS.
+
+    **Note:** Virtualization should be enabled in the BIOS settings.
+    Without enabling virtualization in your BIOS/UEFI, WSL will fail to start and throw errors like 0x80370102.
+    
+2. **Install and setup Ubuntu Distribution**
+
+    - Approximately 1.5 Gb free space is necessary on the system drive.
+
+    - Check list of the installed distributions:<br>
+    `> wsl --list --all`<br>
+    The distribution with name **Ubuntu** should be absent. If it present, use other name for further Ubuntu installation.
+
+    - Check list of the available distributions:<br>
+    `> wsl --list --online`<br>
+    The **Ubuntu** should be in this list.
+
+    - Install Ubuntu distribution using the following command:
+    `> wsl --install --web-download -d Ubuntu`
+
+    - After installation the Ubuntu ask default username and password (twice).
+    Enter it and remember.
+
+3. **Move Ubuntu Distribution to the non-system drive** (non-mandatory)
+
+    The Ubuntu system may take a lot of disk space because it will be used for the monstuose CEF/JCEF build (170-200 Gb). It your system drive does not have enough free space, it is recommended to move Ubuntu distribution to non-system drive, for example to the drive D.
+
+    Open PowerShell and execute the following steps in it to move Ubuntu distribution:
+
+    - Stop WSL:<br>
+    `> wsl --shutdown`
+    - Create a new folder for temporary backup, for example `D:\WSL\backups\`.
+    - Export clear Ubuntu distribution to the archive:
+    `> wsl --export Ubuntu D:\WSL\backups\ubuntu.tar`
+    - Remove old registration of the old Ubuntu distribution to remove it files from system disk C:
+    `> wsl --unregister Ubuntu`
+    - Create a new folder on the non-system drive where the Ubuntu distribution will be located, for example `D:\WSL\Ubuntu\`.
+    - Import saved Ubuntu distribution to the new working folder:
+    `> wsl --import Ubuntu D:\WSL\Ubuntu\ D:\WSL\backups\ubuntu.tar --version 2`
+    - It is possible that the Ubuntu reset default user to the **root** user.
+    Execute the following command to specify your default user:<br>
+    `> ubuntu config --default-user [user]`<br>
+    where *[user]* is your default user.
+    - Start Ubuntu using command:<br>
+    `> wsl`
+    - Check that the Linux user is correct:<br>
+    `~$ whoami`<br>
+    The output should show your user instead of *root*.
+    - Check the Ubuntu version:<br>
+    `~$ lsb_release -d`<br>
+    Output:
+        ```
+        Description:    Ubuntu 26.04 LTS
+        ```
+    - Update and upgrade Ubuntu packages using following command:<br>
+    `~$ sudo apt update && sudo apt upgrade -y`
+
+    **Welcome! Your Ubuntu is ready.**<br>
+
+    *Note:* your home directory in the Ubuntu is **/home/[user]** where *[user]* is your default user. It can be simple openen everywhere using command: `cd ~`.
+
+    *Note:* Recommended to install **Midnight Commander** (mc) file manager to simply navigate through Linux file system, view/open files, etc; especially if you do not have expirience with Unix platforms.<br>
+    To install Midnight Commander file manager simple execute following commands:
+    ```
+    ~$ sudo apt update
+    ~$ sudo apt install mc -y
+    ```
+    To open Midnight Commander file manager enter `mc` command from any path.
+    ![Midnight Commander Screenshot:](/img/mc.png "Midnight Commander")
+
+4. ![Warning](img/warn.png) **Troubleshooting**
+
+    - The version of the WSL should be 2. <br>
+    The version can be checked using following command:
+    `> wsl --status`
+    The Default Version in the Console Output should be 2:
+        ```
+        Default Distribution: Ubuntu
+        Default Version: 2
+        ```
+        Also, the available OS distributions can be verified using the following command:<br>
+        `> wsl --list --verbose`<br>
+        Output:
+        ```
+          NAME      STATE           VERSION
+        * Ubuntu    Stopped         2
+        ```
+    - If the WSL version is not 2, then the WSL should be updated. The following command should be used to update WSL:<br>
+    `> wsl --update`<br> and <br>
+    `> wsl --set-default-version 2`
+    - The WSL may load most of all resources of the Windows OS, especially during downloading and building the CEF/JCEF. <br>
+    Building the CEF is highly resource-intensive, requiring at least 16GB of RAM (32GB+ recommended) and 150GB of free disk space. If left WSL unthrottled, the Ninja build system can consume all available system memory and CPU cores, causing system freezing and crashes.<br>
+    ✅ Therefore, it is recommended to limit resources that WSL can use.<br>
+    It is possible using `.wslconfig` file that located at the home user folder (Windows): `C:\Users\[win_user]\.wslconfig`.<br>
+    Add to the `.wslconfig` file following lines to limit resources that WSL can use:
+        ```
+        [wsl2]
+        memory=24GB
+        swap=32GB
+        swapfile=D:\\work\\wsl\\wsl-swap.vhdx
+        ```
+        Where:<br>
+        `memory` - maximum RAM that can use WSL;<br>
+        `swap` - size of the SWAP file;<br>
+        `swapfile` - use separate SWAP file that located on the D disk to avoid heavy usage Windows SWAP file.
+    - The WSL cannot work with the Internet/Network in the NAT mode (due to the our security limitations or something else). <br>
+    Windows 11 introduces a powerful new `Mirrored` networking mode for WSL that forces a Linux virtual machine to use the Windows networking stack directly (as a whole), instead of creating a virtual router.
+    Add to the `.wslconfig` file following lines to enable `Mirrored` networking mode:
+        ```
+        [wsl2]
+        networkingMode=Mirrored
+        ```
+        It allows the WSL working with the Internet/Network without our corporate VPN.<br>
+
+        *Note:* Sometimes, right after installation, the WSL cannot work with Network/Internet when our corporate VPN is enabled, probably due to the strictest type of corporate protection — Force Tunneling with blocking Loopback and foreign DNS at the core level of the VPN client.
+        Theoretically, it can be bypassed using experimental `VirtioProxy` networking mode. However, it was not verified.<br><br>
+        But after some restarts, the WSL can connect to the resources under corporate VPN.<br>
+        At least to the Nexus site after installing PT CA certificate.
+    - All above global settings of the WSL can be modified in the UI mode too, using WSL Settings dialog. To open it, press Win key, enter `wsl settings` in the search text box, and press Enter.
+    - Disconnect (or suspend it) to the corporate VPN before installing applications/programs to the WSL from remote Ubuntu repositories because corporate VPN blocks connections to them.<br> And, otherwise, connect to the corporate VPN before working with Nexus, SVN, etc.
+
+---
+<br><br>
+
+## Chromium Embedded Framework (CEF) installation and building
+The following official instruction with necessary modification were used for CEF installation and building:
+- https://chromiumembedded.github.io/cef/master_build_quick_start
+- https://chromiumembedded.github.io/cef/branches_and_building.html
+- The Unix path is added for each command in the examples to have understanding where it executes, the direct command is specified after space.<br>
+What is means:<br>
+    - `~$ mkdir ~/projects` means that the command `mkdir` is executed in the users home folder *"/home/[user]"*.
+    - `~/projects/cef$ git --version` means that the command `git` is executed in the folder *"/home/[user]/projects/cef"* (the same as *"~/projects/cef"*).
+
+1. Create folders structure for the projects. <br>
+I suggest to create **projects** folder that will contain CEF and JCEF projects using command:<br> 
+    ```
+    ~$ mkdir ~/projects
+    ```
+    Then, the projects for the CEF project can be created using following commands:
+    ```
+    ~$ mkdir ~/projects/cef
+    ~$ mkdir ~/projects/cef/automate
+    ~$ mkdir ~/projects/cef/chromium_git
+    ```
+    ![The folders structure should be like as displayed below:](/img/tree.png "tree")
+
+2. Download and run **"~/code/install-build-deps.py"** to install build dependencies. Answer Y (yes) to all of the questions. <br>
+Execute the following commands:
+    ```
+    cd ~/projects/cef
+    
+    ~/projects/cef$ sudo apt-get install curl file lsb-release procps python3 python3-pip
+    
+    ~/projects/cef$ curl 'https://chromium.googlesource.com/chromium/src/+/main/build/install-build-deps.py?format=TEXT' | base64 -d > install-build-deps.py
+    
+    ~/projects/cef$ sudo python3 ./install-build-deps.py --no-arm --no-chromeos-fonts --no-nacl
+    
+    ~/projects/cef$ python3 -m pip install dataclasses importlib_metadata
+    ```
+    *Notes:* 
+    - The latest command `python3 -m pip install dataclasses importlib_metadata` from the list above might be failed with *error: externally-managed-environment* message due to the latest PEP 668 security standard is used in the latest Ubuntu. It rejects installing packages using `pip install` globally for the OS to avoid broking system packages.
+    Instead, the system package manager `apt` can be used to install **importlib_metadata**:
+        ```
+        ~/projects/cef$ sudo apt update
+        ~/projects/cef$ sudo apt install python3-importlib-metadata -y
+        ```
+        Also, the `pip install` command can be executed with the special flag `--break-system-packages` that suppress PEP 668 security standard error and install packages globally:<br>
+        `python3 -m pip install importlib_metadata --break-system-packages`<br>
+        This way is not recommended.
+        Successful installation of the **"importlib_metadata"** can be verified using following command (the *"importlib_metadata is installed"* message should be present in the Bash output if package is installed):<br>
+        ```
+        ~/projects/cef$ python3 -c "import importlib_metadata; print('importlib_metadata is installed')"
+        ```
+    - The installation **"dataclasses"** is not necessary now because this package is included in the Python 3.14. Availability of the **"dataclasses"** package can be verified using following command (the "importlib_metadata is installed" message should be in the Bash output):<br>
+        ```
+        ~/projects/cef$ python3 -c "import dataclasses; print(dataclasses.__file__)"
+        ```
+        The *"/usr/lib/python3.14/dataclasses.py"* message should be written in the Bash output if package is available.
+
+3. Download **"~/projects/cef/depot_tools"** using Git:
+    ```
+    ~$ cd projects/cef/
+    ~/projects/cef$ git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+    ```
+    *Note:* The latest Git is included in the Ubuntu distributive.
+
+4. Add the **"~/projects/cef/depot_tools"** directory to your PATH:
+    ```
+    ~/projects/cef$ export PATH=/home/[user]/projects/cef/depot_tools:$PATH
+    ```
+    where *[user]* is your default user.<br>
+    Note the use of an absolute path here.
+
+    ![alt text](img/info.png) _**Suggestion:**_ The above export works in the scope of the one WSL session. It means that the above **export** of the *depot_tools* to the **PATH** environment variable is temorary and will be lost if the WSL session is reopened or terminated by different causes and then opened again.<br>
+    Therefore, it can be added to the user's **.bashrc** script to avoid loosing *depot_tools* path and avoid further problems with the build.<br>
+    It can be done using following command:<br>
+    `~$ echo 'export PATH="$HOME/projects/cef/depot_tools:$PATH"' >> ~/.bashrc`
+
+5. Download the “~/automate/automate-git.py” script using commands:
+    ```
+    ~/projects/cef$ cd ~/projects/cef/automate
+    ~/projects/cef/automate$ wget https://raw.githubusercontent.com/chromiumembedded/cef/master/tools/automate/automate-git.py
+    ```
+6. Create the **"~/projects/cef/chromium_git/update.sh"** script with the specific content. <br>
+The **GNU nano** text editor can be used to create **"update.sh"** script. Execute the following commands to create **"update.sh"** script:
+    ```
+    ~/projects/cef/automate$ cd ~/projects/cef/chromium_git/
+    ~/projects/cef/chromium_git$ nano update.sh
+    ```
+    The **GNU nano** text editor will be opened.
+
+    According to the CEF documentation the following content should be added to the **"update.sh"** script:
+    ```
+    #!/bin/bash
+    python3 ../automate/automate-git.py --download-dir=/home/[user]/project/cef/chromium_git --depot-tools-dir=/home/[user]/projects/cef/depot_tools --no-distrib --no-build
+    ```
+    However, we need to download Chromium sources not from **master** but from specific **7499** branch that contains **143** version of the Chromium (143.0.14+gdd46a37+chromium-143.0.7499.193).
+    Therefore, the following parameter should be added to the script too:<br>
+    `--branch=7499`
+
+    Also, ut is recommended to add the following set of specific parameters to the script to increase possibility of successful execution:<br>
+    `--with-pgo-profiles --force-clean --force-config --force-update`
+
+    The final content of the script might/should be following (example):
+    ```
+    #!/bin/bash
+    python3 ../automate/automate-git.py --download-dir=/home/[user]/projects/cef/chromium_git --depot-tools-dir=/home/[user]/projects/cef/depot_tools --no-distrib --no-build --branch=7499 --with-pgo-profiles --force-clean --force-config --force-update
+    ```
+
+    Save the content of the **"update.sh"** script by the **GNU nano** editor using following combination:
+    - Press Ctrl+O combination and Enter key to save script.
+    - Press Ctrl+X combination to exit from **GNU nano** text editor.
+
+    The content of the created script can be verified using the **GNU nano** editor or execution the following command:<br>
+    `~/projects/cef/chromium_git$ cat update.sh`
+
+7. Prepare **"~/projects/cef/chromium_git/update.sh"** script for execution.<br>
+Give it executable permissions using following command:<br>
+`~/projects/cef/chromium_git$ chmod 755 update.sh`
+
+    Check that executable permissions are added:<br>
+    `~/projects/cef/chromium_git$ ls -lh update.sh`<br>
+    The printed in the Bash console permissions should contain Execute : Permission marked with **x** sign to run the file as a program or script, for example:<br>
+    `-rwxr-xr-x 1 [user] [user] 256 Jun 18 16:44 update.sh`
+
+8. Execute the **"update.sh"** script.<br>
+`~/projects/cef/chromium_git$ ./update.sh`<br>
+Wait for CEF and Chromium source code to download. <br>
+The CEF source code will be downloaded to **"~/projects/cef/chromium_git/cef"**. <br>
+The Chromium source code will be downloaded to **"~/projects/cef/chromium_git/chromium/src"**. <br>
+After download completion, the CEF source code will be copied to **"~/projects/cef/chromium_git/chromium/src/cef"**.<br>
+
+    The many errors can be occurred during this long downloading process.
+    If it is something like `git fetch` errors (resources cannot be downloaded and indexes were broken), for example:<br>
+    ```
+    src/third_party/angle/third_party/glmark2/src (ERROR)
+    ...
+    Error: Command 'git -c core.deltaBaseCacheLimit=2g fetch origin --no-tags' returned non-zero exit status 128 in /home/dmdu/projects/cef/chromium_git/chromium/src/third_party/angle/third_party/glmark2/src
+    ```
+    then it is recommended to remove source directory with broken indexes and start `update.sh` Bash script again:
+    ```
+    ~/projects/cef/chromium_git$ rm -rf /home/dmdu/projects/cef/chromium_git/chromium/src/third_party/glmark2/src
+    ~/projects/cef/chromium_git$ ./update.sh
+    ```
+
+9. Configure `GN_DEFINES` for your desired build environment.<br>
+Chromium provides `sysroot` images for consistent builds across Linux distros. The necessary files will have downloaded automatically as part of step 8 above. **Usage of Chromium’s `sysroot` is recommended** if you don’t want to deal with potential build breakages due to incompatibilities with the package or kernel versions that you’ve installed locally. To use the `sysroot` image configure the following `GN_DEFINES`:<br>
+    ```
+    export GN_DEFINES="use_sysroot=true use_allocator=none symbol_level=1 is_cfi=false use_thin_lto=false"
+    ```
+    ✅ *Note:* The above specified `GN_DEFINES` for `sysroot` image was used in the current build process.
+
+    It is also possible to build using locally installed packages instead of the provided sysroot. Choosing this option may require additional debugging effort on your part to work through any build errors that result. On Ubuntu 18.04 the following `GN_DEFINES` have been tested to work reliably:
+    ```
+    export GN_DEFINES="use_sysroot=false use_allocator=none symbol_level=1 is_cfi=false use_thin_lto=false use_vaapi=false"
+    ```
+    *Note:* that the `cefclient` target cannot be built directly when using the `sysroot` image. You can work around this limitation by creating a [binary distribution](https://chromiumembedded.github.io/cef/branches_and_building.html#manual-packaging) after completing step 9 below, and then building the `cefclient` target using that binary distribution.<br>
+    
+    You can also create an [AddressSanitizer build](https://chromiumembedded.github.io/cef/using_address_sanitizer.html) for enhanced debugging capabilities. Just add `is_asan=true dcheck_always_on=true` to the GN_DEFINES listed above and build the `out/Release_GN_x64` directory in step 10 below. Run with the `asan_symbolize.py` script as described in the AddressSanitizer link to get symbolized output.
+
+    The various other listed GN arguments are based on recommendations from the [AutomateBuildSetup page](https://chromiumembedded.github.io/cef/automated_build_setup.html#linux-configuration). You can [search for them by name](https://source.chromium.org/search?q=use_allocator%20gni&ss=chromium) in the Chromium source code to find more details.
+
+10. Run the ``~/code/chromium_git/chromium/src/cef/cef_create_projects.sh`` script to create Ninja project files.<br> 
+    ```
+    ~/projects/cef/chromium_git$ cd ~/projects/cef/chromium_git/chromium/src/cef
+    ~/projects/cef/chromium_git/chromium/src/cef$ ./cef_create_projects.sh
+    ```
+    Repeat this step if you change the project configuration or add/remove files in the GN configuration (BUILD.gn file).
+
+11. Create a Debug or Release (recommended) build of CEF/Chromium using Ninja.<br>
+ Edit the CEF source code at **"~/project/cef/chromium_git/chromium/src/cef"** and repeat this step multiple times to perform incremental builds while developing. <br><br>
+ *Note:* the additional `chrome_sandbox` target may be required by step 12. The `cefclient` target will only build successfully if you set `use_sysroot=false` in step 9, so remove that target if necessary.<br><br>
+    Example from CEF documentation:
+    ```
+    ~/projects/cef/chromium_git/chromium/src/cef$ cd ~/projects/cef/chromium_git/chromium/src
+
+    ~/projects/cef/chromium_git/chromium/src$ autoninja -C out/Debug_GN_x64 cefclient cefsimple ceftests chrome_sandbox
+    ```
+    Replace `Debug` with `Release` to generate a Release build instead of a Debug build.<br><br>
+    ✅ Example of usage in the current build (recommended):
+    ```
+    ~/projects/cef/chromium_git/chromium/src/cef$ cd ~/projects/cef/chromium_git/chromium/src
+
+    ~/projects/cef/chromium_git/chromium/src$ autoninja -C out/Release_GN_x64 cefsimple ceftests -j 8
+    ```
+    ✅ *Note:* It is recommended to limit jobs count to avoid crashes.<br>
+    To limit jobs count the `-j [n]` parameter can be added to the `ninja/autoninja`. <br>
+    Set it to half your available logical cores (e.g., -j 8 or -j 4 depending on your CPU and RAM). In the current build is used 8 jobs using `-j 8` parameter because CPU on the physical machine has 16 cores.
+
+    ✅ *Note:* The `chrome_sandbox` target is not necessary for the build because the SUID Sandbox utility is obsolete and does not used by modern Chromiun browsers. See next 12 chapter for detailed information.
+
+12. Set up the Linux SUID sandbox if you are using an older kernel (< 3.8). <br>
+❌ **This chapter is not necessary**<br>
+The Ubuntu kernel version in WSL 2 is significantly newer. The SUID Sandbox utility was developed by Google over 10 years ago for very old Linux kernels (versions below 3.8) that did not yet know how to safely isolate processes at the user level. The modern Ubuntu 26.04 LTS is used for the CEF build. The kernel version can be checked in WSL with the `uname -r` command - expected output like 5.15.x or 6.x.x.<br>
+Modern Linux kernels have User Namespaces technology built in, which provides security without any old-fashioned SUID helpers. Google itself officially removed support for SUID Sandbox from the Chromium code back in 2016.
+
+13. Run the `cefsimple` and/or `ceftests` sample applications to check CEF build. <br>
+    ```
+    ~/projects/cef/chromium_git/chromium/src$ ./out/Release_GN_x64/cefsimple
+    ```
+    See the [Linux debugging](https://chromium.googlesource.com/chromium/src/+/main/docs/linux/debugging.md) guide for detailed debugging instructions. 
+    
+    *Note:* that the `cefclient` application can be used only if you set `use_sysroot=false` in step 9.
+    
+14. Apply necessary changes to the CEF sources in the CEF source code folder  **"~/project/cef/chromium_git/chromium/src/cef"**<br>
+The changes for the CEF are available in the `cef.diff` file (provided by request).
+Copy `cef.diff` file from Windows file system to the Ubuntu file system.
+It can be done using standard Windows Explorer:
+    - Press Win + E
+    - In the left navigation menu find Linux (or enter in the address bar `\\wsl$`).
+    - Open folder: `Ubuntu -> home -> [user] -> projects -> patches` (create it if it is not present)
+    - Copy `cef.diff` in the `patches` folder from the Windows (Ctrl+C/Ctrl+V)
+Or it can be done via Linux terminal:
+    ```
+    ~/projects/cef/chromium_git/chromium/src$ cd ~
+    ~$ mkdir /home/dmdu/projects/patches
+    ~/projects/patches$ cp /mnt/d/work/wsl/patches/cef.diff ~/projects/patches/
+    ~/projects/patches$ ls -lh
+    ```
+    Apply `cef.diff` file using following commands:
+    ```
+    ~/projects/patches$ cd ~/projects/cef/chromium_git/chromium/src/cef
+    ~/projects/cef/chromium_git/chromium/src/cef$ git apply ~/projects/patches/cef.diff
+    ```
+    Check that the changes were applied:<br>
+    `git status`<br>
+    In the output, you should see a list of files under the heading `Changes not staged for commit` (e.g. `modified: libcef/browser/alloy/alloy_browser_host_impl.cc`). This confirms that the code on disk has been successfully updated to match your modifications file.
+
+15. Regenerate Hashes and Rebuild CEF with applied changes.<br>
+    After applying the patch, the files on the disk will be updated. Therefore, the CEF should be rebuilt. However, it is not necessary to wait another 4 hours for a build CEF again! Thanks to the smart Ninja/Siso system, the next launch will automatically perform an **incremental build**:
+    - Execute generation command to update CEF Hashes for applied changes:
+        ```
+        ~/projects/cef/chromium_git/chromium/src/cef$ cd ~/projects/cef/chromium_git/chromium/src
+        ~/projects/cef/chromium_git/chromium/src$ python3 cef/tools/gclient_hook.py
+        ```
+    - Rerun build of CEF again (incremental):
+        ```
+        ~/projects/cef/chromium_git/chromium/src$ autoninja -C out/Release_GN_x64 cefsimple ceftests -j 8
+
+        ```
+        The compiler will quickly run through CEF source files, see that only one or some files from the patch (diff) have changed, recompile only them in 2-3 minutes and update the final binaries.
+
+16. Rerun the `cefsimple` and/or `ceftests` sample applications to check the modified CEF build. <br>
+    ```
+    ~/projects/cef/chromium_git/chromium/src$ ./out/Release_GN_x64/cefsimple
+    ```
+    The CEF Simple application should be opened:
+    ![CEF Simple Screenshot:](/img/cef-simple.png "CEF Simple")
+
+
+17. Make CEF binary distribution package.<br>
+After building Debug and/or Release configurations it is necessary to to create a binary distribution package using `make_distrib` tool.<br>
+To create binary distribution package open `tools` folder and run `make_distrib.sh` script as displayed below:
+    ```
+    ~/projects/cef/chromium_git/chromium/src$ cd ~/projects/cef/chromium_git/chromium/src/cef/tools/
+    ~/projects/cef/chromium_git/chromium/src/cef/tools$ ./make_distrib.sh --ninja-build --minimal --x64-build
+    ```
+    If the process succeeds a binary distribution package will be created in the `~/projects/cef/chromium_git/chromium/src/cef/binary_distrib` directory:
+    ```
+    ~/projects/cef/chromium_git/chromium/src/cef/binary_distrib$ ls -lh
+    total 692M
+    drwxr-xr-x 8 dmdu dmdu 4.0K Jun 23 06:28 cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal
+    -rw-r--r-- 1 dmdu dmdu 692M Jun 23 06:29 cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal.zip
+    ```
+
+    See the `make_distrib.py` script for additional usage options (if necessary). <br>
+
+    The resulting binary distribution will be used by PSP application.
+
+18. Optimize size of the CEF binary distribution package (libcef.so)<br>
+    It is necessary to check size of the `libcef.so` library after the building.<br>
+    Even if the build was made in the `release` profile, the `libcef.so` library might have many debugging information and has a very large size. For example, after the build described in the current instruction, the `libcef.so` library has 2.5 Gb size (due to Google scripts mostly ignores `release` profile and add debugging info and symbols in the library). And it is inappropriate. The Maven cannot pack the files larger than 2 Gb to the JAR.<br>
+    The `strip` native Linux command can help to remove unnecessary debugging information and symbols.<br>
+    Execute the following commands to reduce size of the `libcef.so` library (if it is necessary:
+    ```
+    ~/projects/cef/chromium_git/chromium/src/cef/binary_distrib$ cd cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal/Release/
+
+    ~/projects/cef/chromium_git/chromium/src/cef/binary_distrib/cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal/Release$ strip --strip-all libcef.so
+    ```
+    After execution of above commands, the debugging information will be removed from the `libcef.so` library and its size will be normal (~400 Mb).<br>
+    Also, other native libraries might be optimized. To optimize all native libraries, the following commands should be executed:
+    ```
+    ~/projects/cef/chromium_git/chromium/src/cef/binary_distrib/cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal/Release$ strip --strip-all *.so
+
+    ~/projects/cef/chromium_git/chromium/src/cef/binary_distrib/cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal/Release$ strip --strip-all *.so.1
+
+    ~/projects/cef/chromium_git/chromium/src/cef/binary_distrib/cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal/Release$ strip --strip-all chrome-sandbox
+    ```
+    This operation reduces the overall size of the CEF native libraries for future usage as released.
+
+---
+<br><br>
+
+## Java Chromium Embedded Framework (JCEF) installation and building
+The following information and official instruction with necessary modification were used for JCEF installation and building:
+- https://github.com/chromiumembedded/java-cef
+- https://chromiumembedded.github.io/java-cef/branches_and_building
+- The Unix path is added for each command in the examples to have understanding where it executes, the direct command is specified after space.<br>
+What is means:<br>
+    - `~$ mkdir ~/projects` means that the command `mkdir` is executed in the users home folder *"/home/[user]"*.
+    - `~/projects/jcef$ git --version` means that the command `git` is executed in the folder *"/home/[user]/projects/jcef"* (the same as *"~/projects/jcef"*).
+
+0. Pre-requirements<br>
+    To build JCEF from source code you should begin by installing the build prerequisites for your operating system and development environment.<br> 
+    
+    **For all platforms this includes:**
+    - CMake version 3.21 or newer.
+    - Git.
+    - Java version 7 to 14 (**Java 21** will be used in this instruction).
+    - Python version 2.6+ or 3+ (**Python 3.12** be used in this instruction instead of the included in the Ubuntu Python 3.14 due to incompatible problems with JCEF build).
+    <br>
+
+    **For Linux platforms:**<br>
+    Currently supported distributions include Debian 10 (Buster), Ubuntu 18 (Bionic Beaver), and related. <br>
+    Ubuntu 18.04 64-bit with GCC 7.5.0+ is recommended. Newer versions will likely also work but may not have been tested. <br>
+    The **Ubuntu 26.04 LTS** will be used in this instruction.
+    
+    Required packages include: 
+    - build-essential
+    - libgtk-3-dev<br><br>
+
+    **Installing required components**<br>
+    - Install **CMake**:<br>
+        Execute following commands:
+        ```
+        ~$ sudo apt update
+        ~$ sudo apt install cmake -y
+        ```
+        Check that CMake successfully installed:<br>
+        `~$ cmake --version`<br>
+        Output should be like following:<br>
+        `cmake version 4.2.3`
+
+    - **Git** is included in the Ubuntu 26.04, it is not necessary to install it. It can be verified using command: `~$ git version`. Output should be: `git version 2.53.0`.
+    - Install **Java 21**:<br>
+        Install Java 21 JDK:
+        ```
+        ~$ sudo apt update
+        ~$ sudo apt install openjdk-21-jdk -y
+        ~$ java -version
+        ```
+        The output should be like following:
+        ```
+        openjdk version "21.0.11" 2026-04-21
+        OpenJDK Runtime Environment (build 21.0.11+10-1-26.04.2-Ubuntu)
+        OpenJDK 64-Bit Server VM (build 21.0.11+10-1-26.04.2-Ubuntu, mixed mode, sharing)
+        ```
+        Setup a `JAVA_HOME` variable. Add `JAVA_HOME` variable to the `.bashrc` script:<br>
+        ```
+        ~$ echo 'export JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64"' >> ~/.bashrc
+        ```
+        Update current terminal session settings immediately:<br>
+        `~$ source ~/.bashrc`<br>
+        Check `JAVA_HOME` variable:<br>
+        `~$ echo $JAVA_HOME`<br>
+        The output should be:<br>
+        `/usr/lib/jvm/java-21-openjdk-amd64`<br>
+
+    - Install **Python 3.12**:
+    Enable `Deadsnakes PPA` repository to install inactual old packages:
+        ```
+        ~$ sudo apt update
+        ~$ sudo apt install software-properties-common -y
+        ~$ sudo add-apt-repository ppa:deadsnakes/ppa -y
+        ```
+        Install Python 3.12 and development tools:
+        ```
+        ~$ sudo apt update
+        ~$ sudo apt install python3.12 python3.12-dev python3.12-venv -y
+        ```
+        Check that Python 3.12 was installed:<br>
+        `~$ python3.12 --version`<br>
+        Output should be following:<br>
+        `Python 3.12.13`<br>
+        Set specific `` environment variable to the `.bashrc` script:
+        ```
+        ~$ echo 'export CLOUDSDK_PYTHON="/usr/bin/python3.12"' >> ~/.bashrc
+        ~$ source ~/.bashrc
+        ```
+
+    
+    - The `build-essential` is included in the Ubuntu 26.04, it is not necessary to install it. It can be verified using command: `~$ dpkg -l build-essential`. The output should be like following:
+        ```
+        ||| Name            Version      Architecture Description
+        +++-===============-============-============-==============================================
+        ii  build-essential 12.12ubuntu2 amd64        Informational list of build-essential packages
+        ```
+    - The `libgtk-3-dev` is included in the Ubuntu 26.04, it is not necessary to install it. It can be verified using command: `~$ dpkg -l libgtk-3-dev`. The output should be like following:
+        ```
+        ||| Name               Version          Architecture Description
+        +++-==================-================-============-=====================================
+        ii  libgtk-3-dev:amd64 3.24.52-0ubuntu1 amd64        development files for the GTK library
+        ```
+
+
+1. Downloading JCEF Source Code
+Create a new folder under `projects` for the JCEF project:
+    ```
+    ~$ mkdir ~/projects/jcef
+    ```
+    Download the latest JCEF source code using Git:
+    ```
+    ~$ git clone https://github.com/chromiumembedded/java-cef.git ~/projects/jcef
+    ```
+    Checkout specific version of the JCEF code (that uses 143 Chromium as CEF uses) from commit `cffac27`:
+    ```
+    ~$ cd projects/jcef/
+    ~/projects/jcef$ git checkout cffac27
+    ```
+    Check `CMakeLists.txt` file in the `` folder, the `CEF_VERSION` should be `143.0.14+gdd46a37+chromium-143.0.7499.193` (the same as in the CEF from previous chapter).
+
+2. Apply necessary Java JCEF sources in the JCEF source code folder  **"~/project/jcef/java"**<br>
+The changes for the CEF are available in the `jcef.diff` file (provided by request).
+Copy `jcef.diff` file from Windows file system to the Ubuntu file system.
+It can be done using standard Windows Explorer:
+    - Press Win + E
+    - In the left navigation menu find Linux (or enter in the address bar `\\wsl$`).
+    - Open folder: `Ubuntu -> home -> [user] -> projects -> patches` (create it if it is not present)
+    - Copy `jcef.diff` in the `patches` folder from the Windows (Ctrl+C/Ctrl+V)<br>
+
+    Or it can be done via Linux terminal:<br>
+    ```
+    ~/projects/patches$ cp /mnt/d/work/wsl/patches/jcef.diff ~/projects/patches/
+    ~/projects/patches$ ls -lh
+    ```
+    Apply `jcef.diff` file using following commands (the latest command is necessary to emulate adding a new files as not staged instead of the untracked):
+    ```
+    ~/projects/patches$ cd ~/projects/jcef/
+    ~/projects/jcef$ git apply ~/projects/patches/jcef.diff
+    ~/projects/jcef$ git add -N .
+    ```
+    Check that the changes were applied:<br>
+    `git status`<br>
+    In the output, you should see a list of files under the heading `Changes not staged for commit`, for example:
+    ```
+    HEAD detached at cffac27
+    Changes not staged for commit:
+    (use "git add <file>..." to update what will be committed)
+    (use "git restore <file>..." to discard changes in working directory)
+            modified:   java/org/cef/CefApp.java
+            modified:   java/org/cef/CefClient.java
+            new file:   java/org/cef/DefaultLoader.java
+            modified:   java/org/cef/SystemBootstrap.java
+            modified:   java/org/cef/browser/CefBrowser.java
+            modified:   java/org/cef/browser/CefBrowserFactory.java
+            new file:   java/org/cef/browser/CefBrowserOsrMin.java
+            new file:   java/org/cef/handler/CefAudioHandler.java
+            new file:   java/org/cef/handler/CefAudioHandlerAdapter.java
+            modified:   java/org/cef/handler/CefClientHandler.java
+            modified:   java/org/cef/handler/CefDisplayHandler.java
+            modified:   java/org/cef/handler/CefDisplayHandlerAdapter.java
+            modified:   java/org/cef/handler/CefRenderHandlerAdapter.java
+            new file:   java/org/cef/misc/CefAudioParameters.java
+            new file:   java/org/cef/misc/CefChannelLayout.java
+            modified:   native/CMakeLists.txt
+            modified:   native/CefClientHandler.cpp
+            modified:   native/CefClientHandler.h
+            new file:   native/audio_handler.cpp
+            new file:   native/audio_handler.h
+            modified:   native/client_handler.cpp
+            modified:   native/client_handler.h
+            modified:   native/display_handler.cpp
+            modified:   native/display_handler.h
+
+    no changes added to commit (use "git add" and/or "git commit -a")
+    ```    
+    
+    This confirms that the code on disk has been successfully updated to match modifications files.
+
+3. Generate project files for Linux platform.
+Run CMake to generate Linux project files and then build the resulting native targets. See CMake output for any additional steps that may be necessary. For example, to generate a Release build of the `jcef` and `jcef_helper` targets:
+    ```
+    ~$ cd ~/projects/jcef
+    ~/projects/jcef$ mkdir jcef_build && cd jcef_build
+    ~/projects/jcef$ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+    ```
+    If the project files are generated successfully, the following output should be displayed in the Terminal Console:
+    ```
+    -- Configuring done (13.3s)
+    -- Generating done (0.1s)
+    -- Build files have been written to: /home/[user]]/projects/jcef/jcef_build
+    ```
+    If project generation is failed, the errors should be fixed.<br>
+
+    ![Warning](img/warn.png) Troubleshooting of project files generation:
+    - Error: `ModuleNotFoundError: No module named 'six.moves'`<br>
+    Check Python version used for generation. It is displayed in the output of the generator: `-- Found PythonInterp: /usr/bin/python3 (found version "3.12.13")`. <br>
+    If in the generator is used 3.14 version, it can be specified manually using following command:
+        ```
+        ~/projects/jcef/jcef_build$ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3.12 ..
+        ```
+        If it also does not help (the generator uses Python 3.12 but internal `gsutil` might use system preferred Python 3.14):<br>
+        Mark Python 3.12 as system preferred. To do it, please use the following commands:
+        ```
+        ~/projects/jcef/jcef_build$ sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.14 1
+        ~/projects/jcef/jcef_build$ sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 2
+        ```
+        Check system default Python version:<br>
+        `~/projects/jcef/jcef_build$ python3 --version`<br>
+        Output should be:<br>
+        `Python 3.12.13`<br>
+        Run generator again:
+        ```
+        ~/projects/jcef/jcef_build$ rm -rf *
+        ~/projects/jcef/jcef_build$ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+        ```
+        If the problem is still occurred (the `ModuleNotFoundError: No module named 'six.moves'` error is still displayed), it can be internal specific bug of the `gsutil` Google library. In this case, it is possible to use following hack: add correct system `six` module directly to the `gsutil`.<br>
+        Find broken `six` module:<br>
+        ```
+        ~/projects/jcef/jcef_build$ cd /home/dmdu/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party
+        ```
+        Change broken `six` module to the system `six` module using following commands (if the system `six` folder is present in the `/usr/lib/python3/dist-packages/`):
+        ```
+        ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party$ mv six six_old_broken
+        ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party$ ln -s /usr/lib/python3/dist-packages/six six
+        ```
+        If `six` folder is not present in the `/usr/lib/python3/dist-packages/`:<br>
+        find system `six` module location in the Linux OS:<br>
+        ```
+        ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party$ python3.12 -c "import six; print(six.__file__)"
+        ```
+        Output should be like following:
+        ```
+        /home/[user]/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party/six/__init__.py
+        ```
+        In this case, execute next commands:
+        ```
+        ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party$ mkdir -p six
+        ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party$ ln -sf /usr/lib/python3/dist-packages/six.py six/__init__.py
+        ```
+        This hack needed to see the Google's `gsutil` to use system `six` module.<br>
+        Run generator again:
+        ```
+        ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party$ cd ~/projects/jcef/jcef_build/
+        ~/projects/jcef/jcef_build$ rm -rf *
+        ~/projects/jcef/jcef_build$ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+        ```
+    - Error: `ModuleNotFoundError: No module named 'boto.vendored.six.moves'`<br>
+        In this case, it is a similar problem in the internal subsystem `boto` (library for Amazon/Google cloud, which `gsutil` uses). It also tries to import `six.moves` from own old developer folders `boto.vendored.six.moves`, and cannot do it because rules of the packages downloading are updated in the new Python versions.<br>
+        Do next steps in the Ubuntu terminal:<br>
+        ```
+        ~/projects/jcef/jcef_build$ cd /home/dmdu/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/gslib/vendored/boto/boto/vendored
+        ```
+        If the `six` folder is exists, rename it:
+        ```
+        ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/gslib/vendored/boto/boto/vendored$ mv six six_old_broken
+        ```
+        Then, create new empty `six` folder and link it to the system working `six` module:
+        ```
+        ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/gslib/vendored/boto/boto/vendored$ mkdir -p six
+
+        ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/gslib/vendored/boto/boto/vendored$ln -sf /usr/lib/python3/dist-packages/six.py six/__init__.py
+        ```
+        Run generator again:
+        ```
+        ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/gslib/vendored/boto/boto/vendored$ cd ~/projects/jcef/jcef_build/
+        ~/projects/jcef/jcef_build$ rm -rf *
+        ~/projects/jcef/jcef_build$ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+        ```
+    - Error: `ModuleNotFoundError: No module named 'imp'`<br>
+        It is classic conflict between old `gsutil` and new Python versions.<br>
+        The `imp` module was removed from Python 3.12 core and later versions. The `importlib` module should be used instead `imp`. However, it is very difficult to replace `imp` to the `importlib` module everywhere in the build scripts (the usage is also different).<br>
+        To fix this problem the `imp` module can be installed to the Python 3.12:
+        ```
+        ~/projects/jcef/jcef_build$ python3.12 -m pip install imp --break-system-packages
+        ```
+        If the `imp` module cannot be found in the `PyPI` (pip) repository, the following hack can be done. Execute following command to create dummy replacement for `imp` module (attention: it is one command!):
+        ```
+        ~/projects/jcef/jcef_build$ sudo tee /usr/lib/python3/dist-packages/imp.py << 'EOF'
+        from importlib.machinery import SourceFileLoader
+        import warnings
+        warnings.warn("The imp module is deprecated", DeprecationWarning, stacklevel=2)
+
+        def load_source(name, pathname, file=None):
+            return SourceFileLoader(name, pathname).load_module()
+        EOF
+        ```
+        Check that `imp` module is available:
+        ```
+        ~/projects/jcef/jcef_build$ python3.12 -c "import imp; print('imp module found')"
+        ```
+        Output should be:
+        ```
+        <string>:1: DeprecationWarning: The imp module is deprecated
+        imp module found
+        ```
+        Run generator again:
+        ```
+        ~/projects/jcef/jcef_build$ rm -rf *
+        ~/projects/jcef/jcef_build$ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+        ```
+    - It are the mostly occurred errors. Other errors also might be occurred and ways to solve them can be found using Google search or AI.
+
+4. Build using Make. <br>
+Execute following command (run Make build limited by 8 running jobs/threads):
+    ```
+    ~/projects/jcef/jcef_build$ make -j8
+    ```
+    Wait until the build is finished without any errors:
+    ```
+    [100%] Built target jcef
+    ```
+
+    ![Warning](img/warn.png) **Troubleshooting of Build using Make**:
+    - Error: `audio_handler.cpp:6:10: fatal error: direct.h: No such file or directory`<br>
+    The `direct.h` is for Windows OS only.
+    To fix it open `audio_handler.cpp` file using **GNU nano** editor:
+        ```
+        ~/projects/jcef/jcef_build$ cd ~/projects/jcef/native/
+        ~/projects/jcef/native$ nano audio_handler.cpp
+        ```
+        Modify line `#include <direct.h>` as displayed below:
+        ```
+            #if defined(OS_WIN)
+                #include <direct.h>
+            #else
+                #include <unistd.h>
+                #include <sys/stat.h>
+            #endif
+        ```
+        After modification save changes:
+        - Press Ctrl+O combination and Enter key to save script.
+        - Press Ctrl+X combination to exit from **GNU nano** text editor.<br>
+
+        Run Build again:
+        ```
+        ~/projects/jcef/native$ cd ~/projects/jcef/jcef_build/
+        ~/projects/jcef/jcef_build$ make -j8
+        ``` 
+    - Errors: <br>
+    `audio_handler.cpp:141:23: error: ‘MAX_PATH’ was not declared in this scope`<br>
+    `audio_handler.cpp:142:32: error: ‘cCurrentPath’ was not declared in this scope`<br>
+    `audio_handler.cpp:142:24: error: ‘_getcwd’ was not declared in this scope; did you mean ‘getcwd’?`<br>
+    To fix them open `audio_handler.cpp` file using **GNU nano** editor:
+        ```
+        ~/projects/jcef/jcef_build$ cd ~/projects/jcef/native/
+        ~/projects/jcef/native$ nano audio_handler.cpp
+        ```
+        Modify line previously modified `#if defined(OS_WIN)` block as displayed below:
+        ```
+            #if defined(OS_WIN)
+                include <direct.h>
+            #else
+                #include <unistd.h>
+                #include <sys/stat.h>
+                #include <limits.h>
+
+                #define MAX_PATH PATH_MAX
+                #define _getcwd getcwd
+            #endif
+        ```
+        After modification save changes:
+        - Press Ctrl+O combination and Enter key to save script.
+        - Press Ctrl+X combination to exit from **GNU nano** text editor.<br>
+        This modification should fix the above mentioned errors.
+        Run Build again:
+        ```
+        ~/projects/jcef/native$ cd ~/projects/jcef/jcef_build/
+        ~/projects/jcef/jcef_build$ make -j8
+        ``` 
+
+5. Build the JCEF Java classes using the `compile.sh` Bash script.<br>
+Execute following commands:
+    ```
+    ~/projects/jcef/jcef_build$ cd ~/projects/jcef/tools/
+    ~/projects/jcef/tools$ ./compile.sh linux64 Release
+    ```
+    Fix compilation errors if they are present.<br>
+    **If there is no errors, try to do next step (step 6: run JCEF test application)**.
+
+    ![Warning](img/warn.png) Troubleshooting of building JCEF Java classes:
+    - Error:
+        ```
+        /home/dmdu/projects/jcef/java/org/cef/handler/CefDisplayHandler.java:36: error: cannot find symbol
+        public void onFaviconURLChange(CefBrowser browser, Vector<String> iconsUrls);
+                                                        ^
+        symbol:   class Vector
+        location: interface CefDisplayHandler
+
+        /home/dmdu/projects/jcef/java/org/cef/handler/CefDisplayHandlerAdapter.java:28: error: cannot find symbol
+            public void onFaviconURLChange(CefBrowser browser, Vector<String> iconsUrls) {
+                                                            ^
+        symbol:   class Vector
+        location: class CefDisplayHandlerAdapter
+        ```
+        Potentially, import of the Vector class is not found.<br>
+        It should be added. Add `import java.util.Vector;` to the all classes where it is used using `nano` editor, for example:
+        ```
+        ~/projects/jcef/tools$ nano ~/projects/jcef/java/org/cef/handler/CefDisplayHandler.java
+        ```
+        The **GNU nano** editor will be opened.<br>
+        After adding `import java.util.Vector;` save changes:
+        - Press Ctrl+O combination and Enter key to save script.
+        - Press Ctrl+X combination to exit from **GNU nano** text editor.<br>
+
+        Repeat it for all java files where the same error are occurred.`
+
+    The full list of the changes in the JCEF project for the Linux can be displayed using following command:
+    ```
+    ~/projects/jcef/tools$ cd ~/projects/jcef
+    ~/projects/jcef$ git diff
+    ```
+    Also, it can be saved to the `jcef-linux.diff` file using the following command:
+    ```
+    ~/projects/jcef$ git diff > jcef-linux.diff
+    ```
+    The `jcef-linux.diff` file can be provided by request.
+
+6.  On Linux test that the resulting build works using the `run.sh` Bash script. <br>
+    It is possible either run the simple example (see java/simple/MainFrame.java) or the detailed one (see java/detailed/MainFrame.java) by appending `detailed` or `simple` to the `run.sh` script. This example assumes that the `Release` configuration was built in step 5 and that you want to use the detailed example.<br>
+    Execute following command:
+    ```
+    ~/projects/jcef/tools$ ./run.sh linux64 Release detailed
+    ```
+    The JCEF browser window will be opened:
+    ![JCEF browser:](/img/jcef-browser.png "JCEF browser window")
+
+7. Make JCEF binary distribution package.
+    After building and compiling JCEF it is necessary to to create a binary distribution package using `make_distrib` tool.<br>
+    To create binary distribution package open `tools` folder and run `make_distrib.sh` script as displayed below:
+    ```
+    ~/projects/jcef/tools$ ./make_distrib.sh linux64
+    ```
+    As result, the `~/projects/jcef/binary_distrib/linux64/` folder will be created.<br>
+    This folder contains all executables and libraries that necessary for the JCEF/CEF.<br>
+    Content:<br>
+    - `/binary_distrib/linux64/` - contains `run.sh` and `compile.sh` Bash scripts;
+    - `/binary_distrib/linux64/bin/` - contains JAR files of the Java JCEF library;
+    - `/binary_distrib/linux64/bin/lib/linux64/` - contains CEF, JCEF and other native libraries;
+    - `/binary_distrib/linux64/bin/tests/` - contains JCEF test classes;
+    - `/binary_distrib/linux64/docs/` - generated JCEF documentation.
+
+8.  Copy modified CEF binary distributive libraries to the JCEF binary distributive.<br>
+    To do it the following commands should be executed:
+    - Create two new environment variables for simplify process:
+    ```
+    ~$ export MY_CEF="/home/[user]/projects/cef/chromium_git/chromium/src/cef/binary_distrib/cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal"
+    ~$ export JCEF_BIN="/home/[user]/projects/jcef/binary_distrib/linux64/bin/lib/linux64"
+    ```
+    The environment variables can be verified using `echo` command, for example:<br>
+    `~$ echo $MY_CEF`
+    - Copy CEF binary distributive libraries:
+        ```
+        ~$ cp -f $MY_CEF/Release/* $JCEF_BIN/
+        ```
+        The following files will be copied:
+        ```
+        chrome-sandbox
+        libEGL.so
+        libGLESv2.so
+        libcef.so
+        libvk_swiftshader.so
+        libvulkan.so.1
+        v8_context_snapshot.bin
+        vk_swiftshader_icd.json
+        ```
+    - Copy CEF resources (localized files):
+        ```
+        ~$ cp -fr $MY_CEF/Resources/* $JCEF_BIN/
+        ```
+        The following files and one folder will be copied:
+        ```
+        /locales
+        chrome_100_percent.pak
+        chrome_200_percent.pak
+        icudtl.dat
+        resources.pak
+        ```
+9. Optimize size of the JCEF binary distribution package.<br>
+    It is better to optimize the JCEF native libraries too.
+    The following command should be executed to optimize the JCEF native libraries:
+    ```
+    ~$ cd ~/projects/jcef/binary_distrib/linux64/bin/lib/linux64
+    ~/projects/jcef/binary_distrib/linux64/bin/lib/linux64$ strip --strip-all jcef_helper
+    ~/projects/jcef/binary_distrib/linux64/bin/lib/linux64$ strip --strip-all libjcef.so
+    ```
+    After optimization the native libraries (CEF and JCEF) should have size less than 500MB:
+    ```
+    ~/projects/jcef/binary_distrib/linux64/bin/lib/linux64$ ls -lh
+    total 448M
+    ```
+
+10. Check that the resulting modified JCEF build with modified CEF binaries works using the `run.sh` Bash script. <br>
+Details can be found in the `Step 6` but the `run.sh` Bash script should be executed from JCEF `binary_distrib` folder that created on the Step .<br>
+
+---
+<br><br>
+
+# PSP application building and running
+To build PSP application from source code you should begin by installing the build tools and application server for Linux operating system.<br> 
+    
+**It is necessary to install:**
+- Java version **21**
+- Apache `Maven` build tool for Java projects (recommended a separate installation for the Linux)
+- Apache `Tomcat 11` (if the Tomcat service will be used instead of the Embedded Tomcat package included in the PS application)
+<br>
+
+**Installing required components**<br>
+- Install **Java 21**:<br>
+    The **Java 21** should be already installed during the JCEF building, see `0. Pre-requirements` section in the previous chapter.<br><br>
+- Install **Apache `Maven` build tool** (if it is necessary):<br>
+    First of all, check if the Maven from your Windows OS is available in the WSL system using command:
+    ```
+    ~$ mvn -version
+    ```
+    If the output looks like following, the Maven build tool from Windows OS is available and accessible for WSL VM host:
+    ```
+    Apache Maven 3.6.3 (cecedd343002696d0abb50b32b541b8a6ba2883f)
+    Maven home: /mnt/d/work/maven
+    Java version: 21.0.11, vendor: Ubuntu, runtime: /usr/lib/jvm/java-21-openjdk-amd64
+    Default locale: en, platform encoding: UTF-8
+    OS name: "linux", version: "6.18.33.2-microsoft-standard-wsl2", arch: "amd64", family: "unix"
+    ```
+    In this case, the Maven installation from Windows OS is accessible and might be used for the building PSP application (see `Maven home: /mnt/d/work/maven` line).<br> <br>
+    ![Warning](img/warn.png) The way Ubuntu sees Maven installation from Windows is a classic and very handy feature of WSL2. It's called Mnt (Mount) Interoperability. When WSL starts, it automatically adds all system paths from your Windows to the global Linux command search variable ($PATH), including the C: and D: drive folders (/mnt/c/Users/.../maven/bin) [results=["0"]]. When you type `mvn`, Linux simply takes and calls the Windows binary through this layer.<br>
+    **However, for compiling complex projects (especially with native dependencies on Linux), it is highly undesirable to use the Windows version of Maven, as this can lead to path conflicts.**<br><br>
+
+    ✅ Therefore, **it is recommended to use a separate Maven installation in the Ubuntu OS for building applications for Linux**; this is the only technically correct way for a developer. When you install the standalone Linux version of Maven, Linux will start using it, completely ignoring the Windows version.
+
+    Execute the following command to install a separate clean Maven installation on the WSL VM host (Linux):
+    ```
+    ~$ sudo apt update && sudo apt install maven -y
+    ```
+    
+    Check that a separate clean Maven is installed successfully on the WSL VM host (Linux):
+    ```
+    ~$ mvn --version
+    ```
+    If the output still contains `Maven home: /mnt/d/work/maven` line, it means, that the Maven from Windows OS is still is used by WSL.<br>
+    In this case, it is necessary to explicitly specify the path to the Maven build tool on the WSL. Execute the following commands to do it:
+    ```
+    ~$ echo 'export PATH="/usr/share/maven/bin:$PATH"' >> ~/.bashrc
+    ~$ source ~/.bashrc
+    ```
+    Check again that a separate clean Maven is installed successfully on the WSL VM host (Linux):
+    ```
+    ~$ mvn --version 
+    ```
+    The output should not (!) contain `Maven home: /mnt/d/work/maven` line and should be like following:
+    ```
+    Apache Maven 3.9.12
+    Maven home: /usr/share/maven
+    Java version: 21.0.11, vendor: Ubuntu, runtime: /usr/lib/jvm/java-21-openjdk-amd64
+    Default locale: en, platform encoding: UTF-8
+    OS name: "linux", version: "6.18.33.2-microsoft-standard-wsl2", arch: "amd64", family: "unix"
+    ```
+    The `Maven home: /usr/share/maven` line shows that the a separate clean Maven installation is used by the WSL VM host.<br><br>
+    However, this clear Maven installation should be configured to build PSP application.
+    <br>
+
+    Now it is necessary to copy Maven's `settings.xml` configuration file from Windows host to the WSL Linux VM host.<br>
+    Do following steps to copy `settings.xml` file:
+    - Create hidden `.m2` directory under the Home directory (usual location):
+        ```
+        ~$ mkdir -p ~/.m2
+        ```
+    - Copy Maven's `settings.xml` configuration file from Windows host to the WSL Linux VM host using following command:
+        ```
+        ~$ cp /mnt/[path-to Windows-settings.xml] ~/.m2/
+        ```
+        where `[path-to Windows-settings.xml]` is the absolute path to the `settings.xml` configuration file on the Windows host.
+        Example of the command:
+        ```
+        ~$ cp /mnt/d/work/maven/conf/settings.xml ~/.m2/
+        ```
+        Check copied `settings.xml` file using `Nano` editor:
+        ```
+        ~$ nano ~/.m2/settings.xml
+        ```
+        If the `settings.xml` file contains Windows paths, replace them to the Linux paths.
+        <br><br>
+        ![Warning](img/warn.png) **Connect corporate VPN before checking!**<br>
+        Check that the Maven uses copied configuration and has connection to the Nexus site using command:
+        ```
+        ~$ mvn help:evaluate -Dexpression=settings.localRepository
+        ```
+        The build should be finished successfully:
+        ```
+        [INFO]
+        /home/dmdu/.m2/repository
+        [INFO] ------------------------------------------------------------------------
+        [INFO] BUILD SUCCESS
+        [INFO] ------------------------------------------------------------------------
+        [INFO] Total time:  1.422 s
+        [INFO] Finished at: 2026-07-16T14:31:57+03:00
+        [INFO] ------------------------------------------------------------------------
+        ```
+
+        ![Warning](img/warn.png)
+        Also, check the Bash console for the many warnings like following:
+        ```
+        [WARNING] org.apache.maven.plugins/maven-metadata.xml failed to transfer from https://ua-mobile-nexus-ngm.pt.playtech.corp/repository/releases/ during a previous attempt. This failure was cached in the local repository and resolution will not be reattempted until the update interval of ngm-releases has elapsed or updates are forced. Original error: Could not transfer metadata org.apache.maven.plugins/maven-metadata.xml from/to ngm-releases (https://ua-mobile-nexus-ngm.pt.playtech.corp/repository/releases/): transfer failed for https://ua-mobile-nexus-ngm.pt.playtech.corp/repository/releases/org/apache/maven/plugins/maven-metadata.xml
+        ```
+        ✅ If there is no above warnings - it is great and the Maven is ready to the building.<br>
+    - ❌ If there are many warnings line above, it is possible that Maven has a problem with certificate on the WSL Linux VM host.
+        To check it, the detailed Maven output can be called:
+        ```
+        ~$ mvn help:evaluate -Dexpression=settings.localRepository -X
+        ```
+        If the following exceptions  are present in the Bash console, it means that `PT CA Certificate` should be installed to access to the Nexus site:
+        ```
+        SSLHandshakeException: (certificate_unknown) PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+        ```
+        In this case, the `PT CA Certificate` should be installed to the WSL Linux VM host and to the Java 21 keystore.
+        <br>
+        Do following steps to install `PT CA Certificate` to the Linux OS:
+        - Download `PT CA Certificate` from the Nexus site (or get it from internal Confluence):
+            ```
+            ~$ openssl s_client -showcerts -connect ua-mobile-nexus-ngm.pt.playtech.corp:443 </dev/null 2>/dev/null | openssl x509 -outform PEM > /tmp/playtech_ca.crt
+            ```
+        - Add it to the Linux's trusted certificates. <br>
+            Copy the downloaded file to the Linux system CA certificates folder and update the repository:
+            ```
+            ~$ sudo cp /tmp/playtech_ca.crt /usr/local/share/ca-certificates/playtech_ca.crt
+            ~$ sudo update-ca-certificates
+            ```
+            The following logs should be displayed in the console:
+            ```
+            Updating certificates in /etc/ssl/certs...
+            rehash: warning: skipping ca-certificates.crt, it does not contain exactly one certificate or CRL
+            1 added, 0 removed; done.
+            Running hooks in /etc/ca-certificates/update.d...
+            Processing triggers for ca-certificates-java (20260311) ...
+            Adding debian:playtech_ca.pem
+            done.
+            ```
+            The `1 added` and `Adding debian:playtech_ca.pem` lines shows that CA Certificate correctly added the Linux's trusted certificates.
+        - Check that connection to the `ua-mobile-nexus-ngm.pt.playtech.corp` is established:
+            ```
+            ~$ wget -O /dev/null https://ua-mobile-nexus-ngm.pt.playtech.corp
+            ```
+            The output should be like following:
+            ```
+            --2026-07-16 15:06:02--  https://ua-mobile-nexus-ngm.pt.playtech.corp/
+            Resolving ua-mobile-nexus-ngm.pt.playtech.corp (ua-mobile-nexus-ngm.pt.playtech.corp)... 10.104.178.153
+            Connecting to ua-mobile-nexus-ngm.pt.playtech.corp (ua-mobile-nexus-ngm.pt.playtech.corp)|10.104.178.153|:443... connected.
+            HTTP request sent, awaiting response... 200 OK
+            Length: 8031 (7.8K) [text/html]
+            Saving to: ‘/dev/null’
+
+            /dev/null                                            100%[===================================================================================================================>]   7.84K  --.-KB/s    in 0s
+
+            2026-07-16 15:06:02 (1.16 GB/s) - ‘/dev/null’ saved [8031/8031]
+            ```
+            ✅ The `HTTP request sent, awaiting response... 200 OK` means that the connection to the `ua-mobile-nexus-ngm.pt.playtech.corp` is established successfully.
+        - Check that the Maven can connect to the Nexus site again using above-mentioned command:
+            ```
+            ~$ mvn help:evaluate -Dexpression=settings.localRepository
+            ```
+            ✅ The console output should not have above-mentioned warnings - it is great and the Maven is ready to the building.
+        <br>
+
+        ![alt text](img/info.png) **Suggestion**:
+        Import the `PT CA Certificate` certificate into the Java 21 repository (Cacerts).<br>
+        The Java 21 virtual machine (JVM) may block connections to the required Playtech services in the future, because Java on Linux has its own, isolated store of trusted certificates (Cacerts), and it completely ignores the Linux system-wide certificates (where the certificate was added in the step above). To prevent future problems with CA Certificates, it is necesary to import the PT CA SSL certificate directly into the certificate store of the Java 21 installation using the built-in keytool utility.<br>
+        Use the following command to install already downloaded `PT CA Certificate` to the Java 21 certificate store:
+        ```
+        ~$ sudo keytool -importcert -trustcacerts \
+            -file /tmp/playtech_ca.crt \
+            -alias playtech_ca \
+            -keystore /usr/lib/jvm/java-21-openjdk-amd64/lib/security/cacerts \
+            -storepass changeit -noprompt
+        ```
+        The `Certificate was added to keystore` line in the console output shows that the `PT CA Certificate` is added to the he Java 21 certificates repository (`CaCerts`) successfully.<br><br>
+- Install **Apache `Tomcat 11`**<br>
+    Execute following command to install Tomcat 11 server/service using `apt` package manager:
+    ```
+    ~$ sudo apt update
+    ~$ sudo apt install tomcat11 -y
+    ```
+    Check that Tomcat 11 service is installed and running using command:
+    ```
+    ~$ sudo systemctl status tomcat11
+    ```
+    The following output should be displayed:
+    ```
+    ● tomcat11.service - Apache Tomcat 11 Web Application Server
+     Loaded: loaded (/usr/lib/systemd/system/tomcat11.service; enabled; preset: enabled)
+     Active: active (running) since Thu 2026-07-16 17:10:01 EEST; 8min ago
+    Invocation: 01adb8fdd08a4796afb1f533bf009b09
+        Docs: https://tomcat.apache.org/tomcat-11.0-doc/index.html
+    Main PID: 4639 (java)
+    ...
+    ```
+    ![alt text](img/info.png) In the previous versions of the Ubuntu the Tomcat 11 is absent in the repositories and should be installed manually (or use Tomcat 10).
+<br><br>
+
+### **Downloading, Building and Starting PSP application**
+
+1. **Copy or Download PSP sources.**<br>
+    It can be done using two ways:
+    - Simply copying from the Windows host to the WSL Linux host.<br>
+         ![Warning](img/warn.png) This way is easier and quick, however, it is not recommended because non-actual sources can be copied.<br>
+        To do it, execute the following commands:
+        ```
+        ~$ mkdir -p ~/projects/stream
+        ~$ cp -r [PSP location on the Windows host]/{jcef-135,video-stream} ~/projects/tmp/stream
+        ```
+        For example:
+        ```
+        ~$ mkdir -p ~/projects/stream
+        ~$ cp -r /mnt/d/work/svn/branches/game-common/stream/{jcef-135,video-stream} ~/projects/stream
+        ```
+    - Download the PSP sources from SVN.<br>
+        ✅ This way is recommended but needed to install and setup `Subversion` (SVN).
+        - Install `Subversion`<br>
+            To install `Subversion` the following command should be executed (disconnect from corporate VPN before execution):
+            ```
+            ~$ sudo apt update && sudo apt install -y subversion
+            ```
+            Check that `Subversion` is installed:
+            ```
+            ~$ svn --version
+            ```
+            Output should contain information like following:
+            ```
+            svn, version 1.14.5 (r1922182)
+                compiled Mar 20 2026, 11:04:18 on x86_64-pc-linux-gnu
+            ```
+        - Checkout PSP application sources from `SVN`<br>
+            To checkout `PSP` sources the following command should be executed (connect to corporate VPN before execution):
+            ```
+            ~$ cd ~/projects/
+            ~/projects$ svn co https://svn.ee.playtech.corp:8443/svn/casmob/branches/game-common/stream
+            ```
+            Accept certificate permanently (press `P`).
+            Then enter password for local default Linux user, the `SVN` will reject it, and then ask login and password of the corporate credentials. Then, the `SVN` will checkout `PSP` source files to the `~/projects/stream/` folder:
+            ```
+            Error validating server certificate for 'https://svn.ee.playtech.corp:8443':
+            - The certificate is not issued by a trusted authority. Use the
+            fingerprint to validate the certificate manually!
+            Certificate information:
+            - Hostname: svn.ee.playtech.corp
+            - Valid: from Sep 13 13:07:24 2024 GMT until Sep 13 13:07:24 2026 GMT
+            - Issuer: PT Global CA
+            - Fingerprint: B2:55:80:9E:12:8A:50:25:9D:5F:AB:26:BE:1E:7C:9A:74:25:BB:35
+            (R)eject, accept (t)emporarily or accept (p)ermanently? p
+            Authentication realm: <https://svn.ee.playtech.corp:8443> VisualSVN Server
+            Password for '{linux_user}': *************
+
+            Authentication realm: <https://svn.ee.playtech.corp:8443> VisualSVN Server
+            Username: {PT_user}
+            Password for '{PT_user}': *************
+
+            A    stream/jcef-135
+            A    stream/jcef-135/core
+            A    stream/jcef-135/core/src
+            A    stream/jcef-135/core/src/main
+            A    stream/jcef-135/core/src/main/java
+            A    stream/jcef-135/core/src/main/java/org
+            A    stream/jcef-135/core/src/main/java/org/cef
+            A    stream/jcef-135/core/src/main/java/org/cef/DefaultLoader.java
+            A    stream/jcef-135/core/src/main/java/org/cef/CefClient.java
+            A    stream/jcef-135/core/src/main/java/org/cef/handler
+            A    stream/jcef-135/core/src/main/java/org/cef/handler/CefDisplayHandler.java
+            A    stream/jcef-135/core/src/main/java/org/cef/handler/CefDisplayHandlerAdapter.java
+            ...
+            ```
+            The `PSP` sources will be downloaded during some time (not immediately, wait full downloading process).
+        
+    The `PSP` sources is ready for building on this step.<br>
+
+2. **Building the PSP application.**
+    - Go to the `~/projects/stream/` folder. The `jcef-135` and `video-stream` folders should be present:
+        ```
+        ~/projects$ cd ~/projects/stream/
+        ~/projects/stream$ ls -lh
+        ```
+        Output should be like following:
+        ```
+        total 8.0K
+        drwxr-xr-x 9 4.0K Jul 24 15:35 jcef-135
+        drwxr-xr-x 3 4.0K Jul 24 15:35 video-stream
+        ```
+    - Go to the `jcef-135` folder and build modified JCEF Java sources and pack libraries for `PSP` application:
+        ```
+        ~/projects/stream$ cd jcef-135/
+        ~/projects/stream/jcef-135$ mvn clean install 
+        ```
+        The modified JCEF project will be built:
+        ```
+        [INFO] Reactor Summary for jcef root 1.135.x-SNAPSHOT:
+        [INFO]
+        [INFO] jcef root .......................................... SUCCESS [  2.183 s]
+        [INFO] jcef core .......................................... SUCCESS [  3.142 s]
+        [INFO] jcef lib (linux) ................................... SUCCESS [ 14.232 s]
+        [INFO] jcef linux ......................................... SUCCESS [  5.137 s]
+        [INFO] ------------------------------------------------------------------------
+        [INFO] BUILD SUCCESS
+        [INFO] ------------------------------------------------------------------------
+        [INFO] Total time:  24.938 s
+        [INFO] Finished at: 2026-07-24T15:56:04+03:00
+        [INFO] ------------------------------------------------------------------------
+        ```
+    - Go to the `video-stream` folder and build `PSP` application:
+        ```
+        ~/projects/stream/jcef-135$ cd ../video-stream/
+        ~/projects/stream/video-stream$ mvn clean install
+        ```
+        The `PSP` WAR application will be built:
+        ```
+        [INFO] Installing /home/[user]/projects/stream/video-stream/target/psp-1.x-SNAPSHOT.war to /home/[user]/.m2/repository/com/playtech/ngm/psp/1.x-SNAPSHOT/psp-1.x-SNAPSHOT.war
+        [INFO] ------------------------------------------------------------------------
+        [INFO] BUILD SUCCESS
+        [INFO] ------------------------------------------------------------------------
+        [INFO] Total time:  25.979 s
+        [INFO] Finished at: 2026-07-24T15:59:20+03:00
+        [INFO] ------------------------------------------------------------------------
+        ```
+        The `~/projects/stream/video-stream/target` folder contains `psp-1.x-SNAPSHOT.war` file that is the result of the `PSP` application build:
+        ```
+        ~/projects/stream/video-stream$ cd target/
+        ~/projects/stream/video-stream/target$ ls -ln | grep -v '^d'
+        total 218060
+        -rw-r--r-- 1 1000 1000 223260913 Jul 24 15:59 psp-1.x-SNAPSHOT.war
+        ```
+        The `psp-1.x-SNAPSHOT.war`WAR file (`Web Application Resource` or `Web Application ARchive`) is a compressed file format used to package and distribute all the components of a Java-based web application into a single container.<br>
+        This WAR file should be placed to the `Tomcat` server for running/executing.
+
+    - ![alt text](img/info.png) 
+        In some cases, the `PSP` application should be executed  separately as JAR file (`Java ARchive`), using `Java` and included `Embedded Tomcat` package. In this case, the following command should be executed in the `video-stream` folder (specifying `jar` profile):
+        ```
+        ~/projects/stream/video-stream$ mvn clean install -Pjar
+        ```
+        The `PSP` JAR application will be built:
+        ```
+        [INFO] Installing /home/[user]/projects/stream/video-stream/target/psp-1.x-SNAPSHOT.jar to /home/[user]/.m2/repository/com/playtech/ngm/psp/1.x-SNAPSHOT/psp-1.x-SNAPSHOT.jar
+        [INFO] ------------------------------------------------------------------------
+        [INFO] BUILD SUCCESS
+        [INFO] ------------------------------------------------------------------------
+        [INFO] Total time:  14.850 s
+        [INFO] Finished at: 2026-07-24T17:05:40+03:00
+        [INFO] ------------------------------------------------------------------------
+        ```
+        The `~/projects/stream/video-stream/target` folder contains `psp-1.x-SNAPSHOT.jar` file in this case:
+        ```
+        ~/projects/stream/video-stream/target$ ls -ln | grep -v '^d'
+        total 264
+        -rw-r--r-- 1 1000 1000 245238 Jul 24 17:05 psp-1.x-SNAPSHOT.jar
+        ```
+        This `PSP` JAR file can be executed without `Tomcat` server using `JAVA`.
+        
+3. **Running the PSP application.**
+    - As `PSP` WAR application:<br>
+        - Check status of the Tomcat 11 server (service) using command:
+            ```
+            ~$ sudo systemctl status tomcat11
+            ```
+            The `Active: inactive (dead)` line should be in the output.<br>
+            If the `Active: active (running)` line is displayed in the output, stop `Tomcat` using following command:
+            ```
+            ~$ sudo systemctl stop tomcat11
+            ```
+            Recheck that `Tomcat` is stopped again.
+
+        - Remove old `PSP` WAR application and unarchived folder (if `PSP` WAR application was deployed before):
+            ```
+            ~$ sudo rm -rf /var/lib/tomcat11/webapps/psp
+            ~$ sudo rm -f /var/lib/tomcat11/webapps/psp.war
+            ```            
+        - Go to the `~/projects/stream/video-stream/target` folder and rename `psp-1.x-SNAPSHOT.war` file to the `psp.war`:
+            ```
+            ~$ cd ~/projects/stream/video-stream/target/
+            ~/projects/stream/video-stream/target$ mv psp-1.x-SNAPSHOT.war psp.war
+            ```
+            Check that `psp.war` renamed: `ls -lh | grep psp.war`. The `psp.war` should be in the Bash output.
+        - Copy `psp.war` WAR application file to the `/var/lib/tomcat11/webapps/` folder (with administrator privileges):
+            ```
+            ~/projects/stream/video-stream/target$ sudo cp psp.war /var/lib/tomcat11/webapps/
+            ```
+        - Start `Tomcat` server using command:
+            ```
+            ~$ sudo systemctl start tomcat11
+            ```
+            Check that `Tomcat` server is running:
+            ```
+            ~$ sudo systemctl status tomcat11
+            ```
+
+
+
+    - As separate `PSP` JAR application:
+
+        
+        
+        
+        
+        
+        
+        
+        command:
+        ```
+        ~/projects/stream/video-stream/target$ java -jar psp-1.x-SNAPSHOT.jar
+        ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TODO
+Try to build JCEF and Streaming
+
+Try to start WAR file on the Tomcat 11 and access it from Windows OS.
+
+
+
+
+
+    
+
+
+
+
+    
+
+
+
+    
+
+
+
+
