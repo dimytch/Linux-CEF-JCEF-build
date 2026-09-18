@@ -1,10 +1,9 @@
-# Table of contents
-1. [Build CEF and JCEF for the Linux platform]()
-2. [PSP application building (on the WSL Linux or separate VM)]()
-3. [Deploying and Running the PSP application (on the AWS Ubuntu instance)]()
+# TOC
+1. [Build CEF and JCEF for the Linux platform](#build-cef-jcef)
+2. [Build CEF](#build-cef)
 
-
-# Build CEF and JCEF for the Linux platform <a name="cef-jcef-build"></a>
+<a name="build-cef-jcef"></a>
+# Build CEF and JCEF for the Linux platform
 
 **General information:** 
 - The Windows 11 Enterprise 23H2 with enabled Virtualization will be used as base OS.
@@ -147,6 +146,7 @@
 ---
 <br><br>
 
+<a name="build-cef"></a>
 ## Chromium Embedded Framework (CEF) installation and building
 The following official instruction with necessary modification were used for CEF installation and building:
 - https://chromiumembedded.github.io/cef/master_build_quick_start
