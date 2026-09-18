@@ -13,6 +13,9 @@
    - [Preinstall/prepare AWS Linux PSP VM with necessary packages and software](#prepare-aws-psp)
    - [Deploy and start PSP application to the AWS Ubuntu PSP VM](#deploy-aws-psp)
 
+---
+<br><br>
+
 <a name="build-cef-jcef"></a>
 # Build CEF and JCEF for the Linux platform
 
