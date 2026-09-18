@@ -6,7 +6,12 @@
     - [Chromium Embedded Framework (CEF) installation and building](#build-cef)
     - [Java Chromium Embedded Framework (JCEF) installation and building](#build-jcef)
 2. [PSP application building (on WSL Linux or separate VM)](#psp-build)
+   - [Installing required components](#psp-req)
+   - [Downloading and Building PSP application](#psp-build)
 3. [Deploying and Running the PSP application (on the AWS Ubuntu instance)](#psp-deploy-run-aws)
+   - [Create AWS Ubuntu VM](#create-aws-psp)
+   - [Preinstall/prepare AWS Linux PSP VM with necessary packages and software](#prepare-aws-psp)
+   - [Deploy and start PSP application to the AWS Ubuntu PSP VM](#deploy-aws-psp)
 
 <a name="build-cef-jcef"></a>
 # Build CEF and JCEF for the Linux platform
@@ -1006,12 +1011,13 @@ Details can be found in `Step 6` but the `run.sh` Bash script should be executed
 # PSP application building (on the WSL Linux or separate VM)
 To build the PSP application from source code, you should begin by installing the build tools and application server for the Linux operating system.<br> 
     
-**It is necessary to install:**
+**What is necessary to install:**
 - Java version **21**
 - Apache `Maven` build tool for Java projects (recommended: a separate installation for Linux)
-- Apache `Tomcat 11` (if the Tomcat service will be used instead of the Embedded Tomcat package included in the PS application)
+- Optional. Apache `Tomcat 11` (if the Tomcat service will be used instead of the Embedded Tomcat package included in the PS application).
 <br>
 
+<a name="psp-req"></a>
 **Installing required components**<br>
 - Install **Java 21**:<br>
     The **Java 21** should already be installed during the JCEF building; see `0. Pre-requirements` section in the previous chapter.<br><br>
@@ -1061,7 +1067,7 @@ To build the PSP application from source code, you should begin by installing th
     Default locale: en, platform encoding: UTF-8
     OS name: "linux", version: "6.18.33.2-microsoft-standard-wsl2", arch: "amd64", family: "unix"
     ```
-    The `Maven home: /usr/share/maven` line shows that a separate clean Maven installation is used by the WSL VM host.<br><br>
+    The `Maven home: /usr/share/maven` line shows that a separate, clean Maven installation is used by the WSL VM host.<br><br>
     However, this clean Maven installation should be configured to build the PSP application.
     <br>
 
@@ -1180,6 +1186,7 @@ To build the PSP application from source code, you should begin by installing th
         ```
         The `Certificate was added to keystore` line in the console output shows that the `PT CA Certificate` is added to the he Java 21 certificates repository (`CaCerts`) successfully.<br><br>
 
+<a name="psp-build"></a>
 ### **Downloading and Building PSP application**
 
 1. **Copy or Download PSP sources.**<br>
@@ -1345,6 +1352,7 @@ To build the PSP application from source code, you should begin by installing th
 # Deploying and Running the PSP application (on the AWS Ubuntu instance)
 We will use a separate AWS Ubuntu PSP VM for running the PSP application. It will allow us to increase the time to scale for further PSP application usage in production.
 
+<a name="create-aws-psp"></a>
 ### Create AWS Ubuntu VM.
 1. Access to the Playtech AWS console is necessary (via https://myapps.microsoft.com/).<br>
 It can be requested via the AMS Playtech system. <br>
@@ -1395,17 +1403,21 @@ Also, the S2S tunnel should be approved and configured by the Playtech Security 
         ```
         Welcome to Ubuntu 26.04 LTS (GNU/Linux 7.0.0-1006-aws x86_64)
         ```
+[Back to TOC](#toc)
+<br>
+        
+<a name="prepare-aws-psp"></a>
 ### Preinstall/prepare AWS Linux PSP VM with necessary packages and software
 
-Open SSH session to the AWS Ubuntu PSP VM through Private IP address of the VM and execute next steps:
+Open an SSH session to the AWS Ubuntu PSP VM through the Private IP address of the VM and execute the next steps:
 
-1. Update AWS Linux packets and install base packages.
+1. Update AWS Linux packages and install base packages.
     - Execute commands one by one:
         ```
         ~$ sudo apt update && sudo apt upgrade -y
         ~$ sudo apt install -y build-essential curl wget git ca-certificates gnupg pciutils usbutils
         ```
-    - Tune Linux Kernel (this Kernel tuning is required for Chromium/CEF):
+    - Tune the Linux Kernel (this Kernel tuning is required for Chromium/CEF):
         ```
         ~$ echo 'vm.max_map_count=1048576' | sudo tee -a /etc/sysctl.conf
         ~$ sudo sysctl -p
@@ -1794,7 +1806,10 @@ Open SSH session to the AWS Ubuntu PSP VM through Private IP address of the VM a
     The Java version should be the same as before reboot.<br>
 
     ![alt text](img/warn.png) If another Java version is displayed after reboot, the `Temurin 21 Java` should be marked as the priority JVM, or the path to `Temurin 21 Java` should be specified in the `.bashrc` file.
+[Back to TOC](#toc)
+<br>
 
+<a name="deploy-aws-psp"></a>
 ### Deploy and start PSP application to the AWS Ubuntu PSP VM<br>
 The PSP application should be built as a JAR on the separate Linux machine before this step.
 
