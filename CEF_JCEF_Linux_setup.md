@@ -91,15 +91,15 @@
 
     **Welcome! Your Ubuntu is ready.**<br>
 
-    *Note:* your home directory in the Ubuntu is **/home/[user]** where *[user]* is your default user. It can be simple opened everywhere using command: `cd ~`.
+    *Note:* your home directory in the Ubuntu is **/home/[user]** where *[user]* is your default user. It can be simply opened everywhere using the command: `cd ~`.
 
-    *Note:* It is recommended to install **Midnight Commander** (mc) file manager to simply navigate through Linux file system, view/open files, etc; especially if you do not have experience with Unix platforms.<br>
-    To install Midnight Commander file manager simple execute the following commands:
+    *Note:* It is recommended to install the **Midnight Commander** (mc) file manager to simply navigate through the Linux file system, view/open files, etc., especially if you do not have experience with Unix platforms.<br>
+    To install the Midnight Commander file manager simple execute the following commands:
     ```
     ~$ sudo apt update
     ~$ sudo apt install mc -y
     ```
-    To open Midnight Commander file manager, enter `mc` command from any path.
+    To open Midnight Commander file manager, enter the `mc` command from any path.
     ![Midnight Commander Screenshot:](/img/mc.png "Midnight Commander")
 
 4. ![Warning](img/warn.png) **Troubleshooting**
@@ -125,7 +125,7 @@
     - WSL may load most of all resources of the Windows OS, especially during downloading and building the CEF/JCEF. <br>
     Building the CEF is highly resource-intensive, requiring at least 16GB of RAM (32GB+ recommended) and 150GB of free disk space. If left WSL unthrottled, the Ninja build system can consume all available system memory and CPU cores, causing system freezing and crashes.<br>
     ✅ Therefore, it is recommended to limit the resources that WSL can use.<br>
-    It is possible using `.wslconfig` file located in the home user folder (Windows): `C:\Users\[win_user]\.wslconfig`.<br>
+    This is possible using the `.wslconfig` file located in the home user folder (Windows): `C:\Users\[win_user]\.wslconfig`.<br>
     Add to the `.wslconfig` file following lines to limit the resources that WSL can use:
         ```
         [wsl2]
@@ -254,10 +254,10 @@ The **GNU nano** text editor can be used to create **"update.sh"** script. Execu
     Therefore, the following parameter should be added to the script too:<br>
     `--branch=7499`
 
-    Also, ut is recommended to add the following set of specific parameters to the script to increase the possibility of successful execution:<br>
+    Also, it is recommended to add the following set of specific parameters to the script to increase the possibility of successful execution:<br>
     `--with-pgo-profiles --force-clean --force-config --force-update`
 
-    The final content of the script might/should be following (example):
+    The final content of the script might/should be as follows (example):
     ```
     #!/bin/bash
     python3 ../automate/automate-git.py --download-dir=/home/[user]/projects/cef/chromium_git --depot-tools-dir=/home/[user]/projects/cef/depot_tools --no-distrib --no-build --branch=7499 --with-pgo-profiles --force-clean --force-config --force-update
@@ -286,7 +286,7 @@ The CEF source code will be downloaded to **"~/projects/cef/chromium_git/cef"**.
 The Chromium source code will be downloaded to **"~/projects/cef/chromium_git/chromium/src"**. <br>
 After the download is complete, the CEF source code will be copied to **"~/projects/cef/chromium_git/chromium/src/cef"**.<br>
 
-    Many errors might occur during this long downloading process.
+    Many errors might occur during this long download process.
     If it is something like `git fetch` errors (resources cannot be downloaded and indexes are broken), for example:<br>
     ```
     src/third_party/angle/third_party/glmark2/src (ERROR)
@@ -510,7 +510,7 @@ To create a binary distribution package, open the `tools` folder and run the `ma
 The following information and official instruction with necessary modifications, were used for JCEF installation and building:
 - https://github.com/chromiumembedded/java-cef
 - https://chromiumembedded.github.io/java-cef/branches_and_building
-- The Unix path is added for each command in the examples to have understanding where it executes; the direct command is specified after the space.<br>
+- The Unix path is added for each command in the examples to show where it executes; the direct command is specified after the space.<br>
 What it means:<br>
     - `~$ mkdir ~/projects` means that the command `mkdir` is executed in the user's home folder *"/home/[user]"*.
     - `~/projects/jcef$ git --version` means that the command `git` is executed in the folder *"/home/[user]/projects/jcef"* (the same as *"~/projects/jcef"*).
@@ -585,9 +585,9 @@ What it means:<br>
         ```
         Check that Python 3.12 was installed:<br>
         `~$ python3.12 --version`<br>
-        Output should be following:<br>
+        Output should be as follows:<br>
         `Python 3.12.13`<br>
-        Set specific `` environment variable to the `.bashrc` script:
+        Set the specific `` environment variable in the `.bashrc` script:
         ```
         ~$ echo 'export CLOUDSDK_PYTHON="/usr/bin/python3.12"' >> ~/.bashrc
         ~$ source ~/.bashrc
@@ -625,12 +625,12 @@ Create a new folder under `projects` for the JCEF project:
     Check the `CMakeLists.txt` file in the `jcef` folder, the `CEF_VERSION` should be `143.0.14+gdd46a37+chromium-143.0.7499.193` (the same as in the CEF from previous chapter).
 
 2. Apply the necessary Java JCEF sources in the JCEF source code folder  **"~/project/jcef/java"**<br>
-The changes for the CEF are available in the `jcef.diff` file (provided by request).
-Copy `jcef.diff` file from Windows file system to the Ubuntu file system.
+The changes for the CEF are available in the `jcef.diff` file (provided upon request).
+Copy `jcef.diff` file from the Windows file system to the Ubuntu file system.
 It can be done using standard Windows Explorer:
     - Press Win + E
     - In the left navigation menu, find Linux (or enter in the address bar `\\wsl$`).
-    - Open folder: `Ubuntu -> home -> [user] -> projects -> patches` (create it if it is not present)
+    - Open the folder: `Ubuntu -> home -> [user] -> projects -> patches` (create it if it is not present)
     - Copy `jcef.diff` into the `patches` folder from Windows (Ctrl+C/Ctrl+V)<br>
 
     Or it can be done via the Linux terminal:<br>
@@ -700,7 +700,7 @@ Run CMake to generate Linux project files and then build the resulting native ta
     ![Warning](img/warn.png) Troubleshooting of project files generation:
     - Error: `ModuleNotFoundError: No module named 'six.moves'`<br>
     Check the Python version used for generation. It is displayed in the output of the generator: `-- Found PythonInterp: /usr/bin/python3 (found version "3.12.13")`. <br>
-    If in the generator is used 3.14 version, it can be specified manually using the following command:
+    If the generator is using the 3.14 version, it can be specified manually using the following command:
         ```
         ~/projects/jcef/jcef_build$ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3.12 ..
         ```
@@ -743,7 +743,7 @@ Run CMake to generate Linux project files and then build the resulting native ta
         ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party$ mkdir -p six
         ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party$ ln -sf /usr/lib/python3/dist-packages/six.py six/__init__.py
         ```
-        This hack needed to see the Google's `gsutil` to use system `six` module.<br>
+        This hack is needed to allow Google's `gsutil` to use the system `six` module.<br>
         Run the generator again:
         ```
         ~/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party$ cd ~/projects/jcef/jcef_build/
@@ -774,7 +774,7 @@ Run CMake to generate Linux project files and then build the resulting native ta
         ```
     - Error: `ModuleNotFoundError: No module named 'imp'`<br>
         It is a classic conflict between the old `gsutil` and new Python versions.<br>
-        The `imp` module was removed from Python 3.12 core and later versions. The `importlib` module should be used instead `imp`. However, it is very difficult to replace `imp` with the `importlib` module everywhere in the build scripts (the usage is also different).<br>
+        The `imp` module was removed from Python 3.12 core and later versions. The `importlib` module should be used instead of `imp`. However, it is very difficult to replace `imp` with the `importlib` module everywhere in the build scripts (the usage is also different).<br>
         To fix this problem, the `imp` module can be installed to the Python 3.12:
         ```
         ~/projects/jcef/jcef_build$ python3.12 -m pip install imp --break-system-packages
@@ -881,7 +881,7 @@ Execute the following commands:
     ~/projects/jcef/tools$ ./compile.sh linux64 Release
     ```
     Fix compilation errors if they are present.<br>
-    **If there are no errors, try to do next step (step 6: run JCEF test application)**.
+    **If there are no errors, try to do the next step (step 6: run JCEF test application)**.
 
     ![Warning](img/warn.png) Troubleshooting of building JCEF Java classes:
     - Error:
@@ -899,13 +899,13 @@ Execute the following commands:
         location: class CefDisplayHandlerAdapter
         ```
         Potentially, the import of the Vector class is not found.<br>
-        It should be added. Add `import java.util.Vector;` to the all classes where it is used using `nano` editor, for example:
+        It should be added. Add `import java.util.Vector;` to all classes where it is used using the `nano` editor, for example:
         ```
         ~/projects/jcef/tools$ nano ~/projects/jcef/java/org/cef/handler/CefDisplayHandler.java
         ```
         The **GNU nano** editor will be opened.<br>
         After adding `import java.util.Vector;` save changes:
-        - Press Ctrl+O combination and Enter key to save the script.
+        - Press Ctrl+O and Enter key to save the script.
         - Press Ctrl+X combination to exit from **GNU nano** text editor.<br>
 
         Repeat it for all Java files where the same error are occurred.`
@@ -922,7 +922,7 @@ Execute the following commands:
     The `jcef-linux.diff` file can be provided upon request.
 
 6.  On Linux, test that the resulting build works using the `run.sh` Bash script. <br>
-    It is possible either run the simple example (see java/simple/MainFrame.java) or the detailed one (see java/detailed/MainFrame.java) by appending `detailed` or `simple` to the `run.sh` script. This example assumes that the `Release` configuration was built in step 5 and that you want to use the detailed example.<br>
+    It is possible to either run the simple example (see java/simple/MainFrame.java) or the detailed one (see java/detailed/MainFrame.java) by appending `detailed` or `simple` to the `run.sh` script. This example assumes that the `Release` configuration was built in step 5 and that you want to use the detailed example.<br>
     Execute the following command:
     ```
     ~/projects/jcef/tools$ ./run.sh linux64 Release detailed
@@ -946,7 +946,7 @@ Execute the following commands:
     - `/binary_distrib/linux64/docs/` - generated JCEF documentation.
 
 8.  Copy modified CEF binary distributive libraries to the JCEF binary distributive.<br>
-    To do it the following commands should be executed:
+    To do this, the following commands should be executed:
     - Create two new environment variables to simplify the process:
     ```
     ~$ export MY_CEF="/home/[user]/projects/cef/chromium_git/chromium/src/cef/binary_distrib/cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal"
@@ -1014,7 +1014,7 @@ To build the PSP application from source code, you should begin by installing th
 
 **Installing required components**<br>
 - Install **Java 21**:<br>
-    The **Java 21** should already be installed during the JCEF building, see `0. Pre-requirements` section in the previous chapter.<br><br>
+    The **Java 21** should already be installed during the JCEF building; see `0. Pre-requirements` section in the previous chapter.<br><br>
 - Install **Apache `Maven` build tool** (if it is necessary):<br>
     First of all, check if Maven from your Windows OS is available in the WSL system using the command:
     ```
@@ -1029,7 +1029,7 @@ To build the PSP application from source code, you should begin by installing th
     OS name: "linux", version: "6.18.33.2-microsoft-standard-wsl2", arch: "amd64", family: "unix"
     ```
     In this case, the Maven installation from Windows OS is accessible and might be used for building the PSP application (see the `Maven home: /mnt/d/work/maven` line).<br> <br>
-    ![Warning](img/warn.png) The way Ubuntu sees the Maven installation from Windows is a classic and very handy feature of WSL2. It's called Mnt (Mount) Interoperability. When WSL starts, it automatically adds all system paths from your Windows to the global Linux command search variable ($PATH), including the C: and D: drive folders (/mnt/c/Users/.../maven/bin) [results=["0"]]. When you type `mvn`, Linux simply takes and calls the Windows binary through this layer.<br>
+    ![Warning](img/warn.png) The way Ubuntu sees the Maven installation from Windows is a classic and very handy feature of WSL2. It's called Mnt (Mount) Interoperability. When WSL starts, it automatically adds all system paths from Windows to the global Linux command search variable ($PATH), including the C: and D: drive folders (/mnt/c/Users/.../maven/bin) [results=["0"]]. When you type `mvn`, Linux simply takes and calls the Windows binary through this layer.<br>
     **However, for compiling complex projects (especially with native dependencies on Linux), it is highly undesirable to use the Windows version of Maven, as this can lead to path conflicts.**<br><br>
 
     ✅ Therefore, **it is recommended to use a separate Maven installation in Ubuntu OS for building applications for Linux**; this is the only technically correct way for a developer. When you install the standalone Linux version of Maven, Linux will start using it, completely ignoring the Windows version.
@@ -1043,13 +1043,13 @@ To build the PSP application from source code, you should begin by installing th
     ```
     ~$ mvn --version
     ```
-    If the output still contains `Maven home: /mnt/d/work/maven` line, it means, that the Maven from Windows OS is still is used by WSL.<br>
+    If the output still contains the `Maven home: /mnt/d/work/maven` line, it means that the Maven from Windows OS is still used by WSL.<br>
     In this case, it is necessary to explicitly specify the path to the Maven build tool in WSL. Execute the following commands to do it:
     ```
     ~$ echo 'export PATH="/usr/share/maven/bin:$PATH"' >> ~/.bashrc
     ~$ source ~/.bashrc
     ```
-    Check again that a separate clean Maven is installed successfully on the WSL VM host (Linux):
+    Check again that a separate, clean Maven is installed successfully on the WSL VM host (Linux):
     ```
     ~$ mvn --version 
     ```
@@ -1062,12 +1062,12 @@ To build the PSP application from source code, you should begin by installing th
     OS name: "linux", version: "6.18.33.2-microsoft-standard-wsl2", arch: "amd64", family: "unix"
     ```
     The `Maven home: /usr/share/maven` line shows that a separate clean Maven installation is used by the WSL VM host.<br><br>
-    However, this clear Maven installation should be configured to build the PSP application.
+    However, this clean Maven installation should be configured to build the PSP application.
     <br>
 
     Now it is necessary to copy Maven's `settings.xml` configuration file from the Windows host to the WSL Linux VM host.<br>
     Do the following steps to copy the `settings.xml` file:
-    - Create hidden `.m2` directory under the Home directory (usual location):
+    - Create a hidden `.m2` directory under the Home directory (usual location):
         ```
         ~$ mkdir -p ~/.m2
         ```
@@ -1080,13 +1080,13 @@ To build the PSP application from source code, you should begin by installing th
         ```
         ~$ cp /mnt/d/work/maven/conf/settings.xml ~/.m2/
         ```
-        Check copied `settings.xml` file using `Nano` editor:
+        Check the copied `settings.xml` file using the `Nano` editor:
         ```
         ~$ nano ~/.m2/settings.xml
         ```
-        If the `settings.xml` file contains Windows paths, replace them to the Linux paths.
+        If the `settings.xml` file contains Windows paths, replace them with Linux paths.
         <br><br>
-        ![Warning](img/warn.png) **Connect corporate VPN before checking!**<br>
+        ![Warning](img/warn.png) **Connect to the corporate VPN before checking!**<br>
         Check that Maven uses the copied configuration and has a connection to the Nexus site using the command:
         ```
         ~$ mvn help:evaluate -Dexpression=settings.localRepository
@@ -1141,8 +1141,8 @@ To build the PSP application from source code, you should begin by installing th
             Adding debian:playtech_ca.pem
             done.
             ```
-            The `1 added` and `Adding debian:playtech_ca.pem` lines shows that CA Certificate correctly added the Linux's trusted certificates.
-        - Check that connection to the `ua-mobile-nexus-ngm.pt.playtech.corp` is established:
+            The `1 added` and `Adding debian:playtech_ca.pem` lines show that the CA Certificate correctly added to Linux's trusted certificates.
+        - Check that the connection to `ua-mobile-nexus-ngm.pt.playtech.corp` is established:
             ```
             ~$ wget -O /dev/null https://ua-mobile-nexus-ngm.pt.playtech.corp
             ```
@@ -1169,8 +1169,8 @@ To build the PSP application from source code, you should begin by installing th
 
         ![alt text](img/info.png) **Suggestion**:
         Import the `PT CA Certificate` certificate into the Java 21 repository (Cacerts).<br>
-        The Java 21 virtual machine (JVM) may block connections to the required Playtech services in the future, because Java on Linux has its own, isolated store of trusted certificates (Cacerts), and it completely ignores the Linux system-wide certificates (where the certificate was added in the step above). To prevent future problems with CA Certificates, it is necessary to import the PT CA SSL certificate directly into the certificate store of the Java 21 installation using the built-in keytool utility.<br>
-        Use the following command to install already downloaded `PT CA Certificate` to the Java 21 certificate store:
+        The Java 21 virtual machine (JVM) may block connections to the required Playtech services in the future because Java on Linux has its own isolated store of trusted certificates (Cacerts), and it completely ignores the Linux system-wide certificates (where the certificate was added in the step above). To prevent future problems with CA Certificates, it is necessary to import the PT CA SSL certificate directly into the certificate store of the Java 21 installation using the built-in keytool utility.<br>
+        Use the following command to install the already downloaded `PT CA Certificate` into the Java 21 certificate store:
         ```
         ~$ sudo keytool -importcert -trustcacerts \
             -file /tmp/playtech_ca.crt \
@@ -1185,7 +1185,7 @@ To build the PSP application from source code, you should begin by installing th
 1. **Copy or Download PSP sources.**<br>
     It can be done in two ways:
     - Simply copying from the Windows host to the WSL Linux host.<br>
-         ![Warning](img/warn.png) This way is easier and quick, however, it is not recommended because non-actual sources can be copied.<br>
+         ![Warning](img/warn.png) This way is easier and quicker; however, it is not recommended because non-actual sources can be copied.<br>
         To do it, execute the following commands:
         ```
         ~$ mkdir -p ~/projects/stream
@@ -1197,9 +1197,9 @@ To build the PSP application from source code, you should begin by installing th
         ~$ cp -r /mnt/d/work/svn/branches/game-common/stream/{jcef-135,video-stream} ~/projects/stream
         ```
     - Download the PSP sources from SVN.<br>
-        ✅ This way is recommended but needed to install and setup `Subversion` (SVN).
+        ✅ This way is recommended but requires installing and setup `Subversion` (SVN).
         - Install `Subversion`<br>
-            To install `Subversion` the following command should be executed (disconnect from corporate VPN before execution):
+            To install `Subversion`, the following command should be executed (disconnect from the corporate VPN before execution):
             ```
             ~$ sudo apt update && sudo apt install -y subversion
             ```
@@ -1207,7 +1207,7 @@ To build the PSP application from source code, you should begin by installing th
             ```
             ~$ svn --version
             ```
-            Output should contain information like following:
+            Output should contain information like the following:
             ```
             svn, version 1.14.5 (r1922182)
                 compiled Mar 20 2026, 11:04:18 on x86_64-pc-linux-gnu
@@ -1251,9 +1251,9 @@ To build the PSP application from source code, you should begin by installing th
             A    stream/jcef-135/core/src/main/java/org/cef/handler/CefDisplayHandlerAdapter.java
             ...
             ```
-            The `PSP` sources will be downloaded during some time (not immediately, wait full downloading process).
+            The `PSP` sources will be downloaded during some time (not immediately; wait for the full download process).
         
-    The `PSP` sources is ready for building on this step.<br>
+    The `PSP` sources are ready for building at this step.<br>
 
 2. **Building the PSP application.**
     - Go to the `~/projects/stream/` folder. The `jcef-135` and `video-stream` folders should be present:
@@ -1267,7 +1267,7 @@ To build the PSP application from source code, you should begin by installing th
         drwxr-xr-x 9 4.0K Jul 24 15:35 jcef-135
         drwxr-xr-x 3 4.0K Jul 24 15:35 video-stream
         ```
-    - Go to the `jcef-135` folder and build modified JCEF Java sources and pack libraries for `PSP` application:
+    - Go to the `jcef-135` folder and build modified JCEF Java sources and pack libraries for the `PSP` application:
         ```
         ~/projects/stream$ cd jcef-135/
         ~/projects/stream/jcef-135$ mvn clean install 
@@ -1302,7 +1302,7 @@ To build the PSP application from source code, you should begin by installing th
         [INFO] Finished at: 2026-07-24T15:59:20+03:00
         [INFO] ------------------------------------------------------------------------
         ```
-        The `~/projects/stream/video-stream/target` folder contains `psp-1.x-SNAPSHOT.war` file that is the result of the `PSP` application build:
+        The `~/projects/stream/video-stream/target` folder contains the `psp-1.x-SNAPSHOT.war` file that is the result of the `PSP` application build:
         ```
         ~/projects/stream/video-stream$ cd target/
         ~/projects/stream/video-stream/target$ ls -ln | grep -v '^d'
@@ -1313,7 +1313,7 @@ To build the PSP application from source code, you should begin by installing th
         This WAR file should be placed to the `Tomcat` server for running/executing.
 
     - ![alt text](img/info.png) 
-        In some cases, the `PSP` application should be executed  separately as JAR file (`Java ARchive`), using `Java` and included `Embedded Tomcat` package. In this case, the following command should be executed in the `video-stream` folder (specifying `jar` profile):
+        In some cases, the `PSP` application should be executed  separately as a JAR file (`Java ARchive`), using `Java` and the included `Embedded Tomcat` package. In this case, the following command should be executed in the `video-stream` folder (specifying the `jar` profile):
         ```
         ~/projects/stream/video-stream$ mvn clean install -Pjar
         ```
@@ -1327,16 +1327,16 @@ To build the PSP application from source code, you should begin by installing th
         [INFO] Finished at: 2026-07-24T17:05:40+03:00
         [INFO] ------------------------------------------------------------------------
         ```
-        The `~/projects/stream/video-stream/target` folder contains `psp-1.x-SNAPSHOT.jar` file in this case:
+        The `~/projects/stream/video-stream/target` folder contains the `psp-1.x-SNAPSHOT.jar` file in this case:
         ```
         ~/projects/stream/video-stream/target$ ls -ln | grep -v '^d'
         total 264
         -rw-r--r-- 1 1000 1000 245238 Jul 24 17:05 psp-1.x-SNAPSHOT.jar
         ```
-        This `PSP` JAR file can be executed without `Tomcat` server using `JAVA`.<br>
+        This `PSP` JAR file can be executed without a `Tomcat` server using `JAVA`.<br>
         We will use this way below.
     
-    - ![alt text](img/info.png) Now the PSP application is built and ready deploy and start.<br>
+    - ![alt text](img/info.png) Now the PSP application is built and ready to deploy and start.<br>
 ---
 [Back to TOC](#toc)
 <br><br>
@@ -1347,12 +1347,12 @@ We will use a separate AWS Ubuntu PSP VM for running the PSP application. It wil
 
 ### Create AWS Ubuntu VM.
 1. Access to the Playtech AWS console is necessary (via https://myapps.microsoft.com/).<br>
-It can be requested via AMS Playtech system. <br>
+It can be requested via the AMS Playtech system. <br>
 When the request is approved, the appropriate AWS application should be available:
 ![alt text](img/aws.png)<br>
 Also, the S2S tunnel should be approved and configured by the Playtech Security team and setup on the AWS. Details can be provided upon request.
 2. Open EC2 EC2 service console
-    - Click above AWS application to open Playtech AWS console.
+    - Click the above-specified AWS application to open the Playtech AWS console.
     - Open the EC2 computing service.
     - Click Instances in the left menu. As a result, all existing instances will be displayed.
 3. Create an AWS Ubuntu instance
@@ -1366,7 +1366,7 @@ Also, the S2S tunnel should be approved and configured by the Playtech Security 
     - Select Ubuntu Server 26.04 LTS as the OS Image:
     ![alt text](img/ec2-ins2.png)
     - Select "g4dn.xlarge" Instance type.
-    - Select already created or create new key pair (it is very important step, this login pair will be used for login to your instance).
+    - Select an already created or create a new key pair (it is very important step, this login pair will be used for login to your instance).
     ![alt text](img/ec2-ins3.png)
     - Network settings (important!). Click "Edit" and specify:
         - VPC = vpc-08bf9431ad8a4e5f8 (psp-vpc)
@@ -1374,11 +1374,11 @@ Also, the S2S tunnel should be approved and configured by the Playtech Security 
         - Firewall (security groups) -> Select existing and choose "psp-private-subnet-group". It is an already configured group with mandatory Playtech requirements:
         ![alt text](img/ec2-ins4.png)
     - Configure storage = 50 GiB (it can be enough for now)
-    - Check Summary and click "Launch instance" button in the right bottom corner:
+    - Check Summary and click the "Launch instance" button in the bottom-right corner:
      ![alt text](img/ec2-ins5.png)<br>
-    The AWS Ubuntu instance is created. Creates instance will be displayed in the "Instances" list.
+    The AWS Ubuntu instance is created. The created instance will be displayed in the "Instances" list.
     - Check the Security settings of your created instance. <br>
-    ![alt text](img/warn.png) The 22 (SSH) and 3389 (RDP) ports should be available from Playtech VPN subnet only! The 443, 8085, 80, 8080 ports can be available from everywhere.
+    ![alt text](img/warn.png) The 22 (SSH) and 3389 (RDP) ports should be available from the Playtech VPN subnet only! The 443, 8085, 80, and 8080 ports can be available from anywhere.
 4. Connect to the created AWS Ubuntu instance
     - All following steps should be done with Playtech VPN enabled!
     - Open Terminal (Power Shell on the Windows).
@@ -1440,7 +1440,7 @@ Open SSH session to the AWS Ubuntu PSP VM through Private IP address of the VM a
         driver   : nvidia-driver-580-server-open - distro non-free
         driver   : xserver-xorg-video-nouveau - distro free builtin
         ```
-        Install recommended driver (or driver that you want) using command:
+        Install the recommended driver (or the driver that you want) using the command:
         ```
         ~$ sudo ubuntu-drivers install
         ```
@@ -1455,7 +1455,7 @@ Open SSH session to the AWS Ubuntu PSP VM through Private IP address of the VM a
         Output should contain `Tesla T4`:
         ![alt text](img/t4-info.png)
 
-    - Add permissions for graphical system, command: 
+    - Add permissions for the graphical system using the command: 
         ```
         ~$ sudo usermod -aG video,render $USER
         ```
@@ -1482,11 +1482,11 @@ Open SSH session to the AWS Ubuntu PSP VM through Private IP address of the VM a
         crw-rw----  1 root render 226, 128 Sep 14 13:39 renderD128
         ```
     - Check and install `Xorg` display service/EGL/X11 libraries.<br>
-        - Check that `xserver-xorg` driver was installed, command:
+        - Check that the `xserver-xorg` driver was installed using the command:
             ```
             ~$ dpkg -l | grep xserver-xorg-video-nvidia
             ```
-            Output should be like following (driver version might be different but should be equal the installed previously NVidia driver version, that can be displayed using `nvidia-smi` command):
+            Output should be like following (driver version might be different but should be equal the installed previously NVidia driver version, which can be displayed using the `nvidia-smi` command):
             ```
             ii  xserver-xorg-video-nvidia-595                595.91.07-0ubuntu0.26.04.1                 amd64        NVIDIA binary Xorg driver
             ```
@@ -1496,11 +1496,11 @@ Open SSH session to the AWS Ubuntu PSP VM through Private IP address of the VM a
             ```
             ~$ sudo find /usr -name 'nvidia_drv.so' 2>/dev/null
             ```
-            Output should contains path to the `nvidia_drv.so` driver, for example:
+            The output should contain the path to the `nvidia_drv.so` driver, for example:
             ```
             /usr/lib/x86_64-linux-gnu/nvidia/xorg/nvidia_drv.so
             ```
-        - Install base X packages using the command (looks like it is might be optional step since `xserver-xorg-video-nvidia` was already installed, but this step is present in the different documents):
+        - Install base X packages using the command (looks like it might be an optional step since `xserver-xorg-video-nvidia` was already installed, but this step is present in the different documents):
             ```
             ~$ sudo apt install -y xorg xserver-xorg-core xserver-xorg-video-dummy
             ```
@@ -1538,7 +1538,7 @@ Open SSH session to the AWS Ubuntu PSP VM through Private IP address of the VM a
         ```
         Remember `PCI BusID` value (the `PCI:0:30:0` in our example).<br>
 
-        Also check if default `Xorg` configuration uses `NVIDIA Tesla T4` GPU. Execute the following commands as one batch:
+        Also check if the default `Xorg` configuration uses the `NVIDIA Tesla T4` GPU. Execute the following commands as one batch:
         ```
         sudo systemctl stop xrdp lightdm gdm3 2>/dev/null
         sudo pkill -9 Xorg 2>/dev/null
@@ -1550,14 +1550,14 @@ Open SSH session to the AWS Ubuntu PSP VM through Private IP address of the VM a
         export DISPLAY=:0
         glxinfo -B | grep -E 'OpenGL vendor|OpenGL renderer'
         ```
-        Output should contain following:
+        Output should contain the following:
         ```
         OpenGL vendor string: NVIDIA Corporation
         OpenGL renderer string: Tesla T4/PCIe/SSE2
         ```
         - ✅ If it contains vendor and renderer as displayed above - OK, do the setup `Xorg` as a service step.
 
-        - ❌ If it displays other vendor and renderer (vendor: `Mesa`,      renderer: `llvmpipe` or others), it is necessary to create an `xorg.conf` file to allow using the `NVIDIA` vendor and renderer.<br>
+        - ❌ If it displays a different vendor and renderer (vendor: `Mesa`,      renderer: `llvmpipe` or others), it is necessary to create an `xorg.conf` file to allow using the `NVIDIA` vendor and renderer.<br>
         In this case, to create a default `xorg.conf` it is necessary to execute the following command:
             ```
             ~$ sudo nvidia-xconfig --allow-empty-initial-configuration
@@ -1625,7 +1625,7 @@ Open SSH session to the AWS Ubuntu PSP VM through Private IP address of the VM a
         ```
 
         The `xorg-startup.sh` starts the `Xorg` display server with the necessary configuration. Execute this script in the terminal.<br>
-        Open another SSH session and execute the `verify-xorg.sh` script. The output should be following:
+        Open another SSH session and execute the `verify-xorg.sh` script. The output should be as follows:
         ```
         ~$ ./scripts/verify-xorg.sh
         DISPLAY=:0
