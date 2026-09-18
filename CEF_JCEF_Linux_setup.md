@@ -153,8 +153,8 @@
     - All above global settings of the WSL can be modified in the UI mode too, using WSL Settings dialog. To open it, press Win key, enter `wsl settings` in the search text box, and press Enter.
     - Disconnect (or suspend it) to the corporate VPN before installing applications/programs to the WSL from remote Ubuntu repositories because corporate VPN blocks connections to them.<br> And, otherwise, connect to the corporate VPN before working with Nexus, SVN, etc.
 
-[Back to TOC](#toc)
 ---
+[Back to TOC](#toc)
 <br><br>
 
 <a name="build-cef"></a>
@@ -502,6 +502,7 @@ To create binary distribution package open `tools` folder and run `make_distrib.
     ![alt text](img/warn.png) *Note*: It is necessary to check that the CEF native libraries are working as expected because sometimes the `strip` command might broke some necessary features/memory allocation tables via removing symbols that it marks as debugging. Check it at least using `cefsimple` or `ceftests`.
 
 ---
+[Back to TOC](#toc)
 <br><br>
 
 <a name="build-jcef"></a>
@@ -998,6 +999,7 @@ Execute following commands:
 Details can be found in the `Step 6` but the `run.sh` Bash script should be executed from JCEF `binary_distrib` folder that created on the Step .<br>
 
 ---
+[Back to TOC](#toc)
 <br><br>
 
 <a name="psp-build"></a>
@@ -1335,8 +1337,9 @@ To build PSP application from source code you should begin by installing the bui
         We will use this way below.
     
     - ![alt text](img/info.png) Now the PSP application is built and ready deploy and start.<br>
-----
-<br>
+---
+[Back to TOC](#toc)
+<br><br>
 
 <a name="psp-deploy-run-aws"></a>
 # Deploying and Running the PSP application (on the AWS Ubuntu instance)
@@ -2010,53 +2013,5 @@ Open other SSH session to the Linux Build VM (Build VM) through Private IP addre
     Installation of the signed PT CA Certificate is a separate procedure for system administrators (partially described here: https://confluence.playtech.corp/spaces/CAS/pages/345938921/Playtech+Web+Server+certificates+-+Procedure).
     Also, enabling TLS might be not necessary, it depends on the final production environment (for example, if AWS PSP VMs will be executed behind Reverse proxy services).
 
-
-
-
-
-    
-
-
-
-
-
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-    
-
-
-
-    
-
-
-
-
+---
+[Back to TOC](#toc)
