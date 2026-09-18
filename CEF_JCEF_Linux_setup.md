@@ -1,5 +1,5 @@
 <a name="toc"></a>
-# TOC
+# Table of Content
 1. [Build CEF and JCEF for the Linux platform](#build-cef-jcef)
     - [General information (Overview)](#overview)
     - [General Prerequisites](#prerequirements)
