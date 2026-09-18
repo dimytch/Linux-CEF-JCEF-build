@@ -1,4 +1,10 @@
-# Build CEF and JCEF for the Linux platform
+# Table of contents
+1. [Build CEF and JCEF for the Linux platform]()
+2. [PSP application building (on the WSL Linux or separate VM)]()
+3. [Deploying and Running the PSP application (on the AWS Ubuntu instance)]()
+
+
+# Build CEF and JCEF for the Linux platform <a name="cef-jcef-build"></a>
 
 **General information:** 
 - The Windows 11 Enterprise 23H2 with enabled Virtualization will be used as base OS.
@@ -42,7 +48,7 @@
 
 3. **Move Ubuntu Distribution to the non-system drive** (non-mandatory)
 
-    The Ubuntu system may take a lot of disk space because it will be used for the monstuose CEF/JCEF build (170-200 Gb). It your system drive does not have enough free space, it is recommended to move Ubuntu distribution to non-system drive, for example to the drive D.
+    The Ubuntu system may take a lot of disk space because it will be used for the massive CEF/JCEF build (170-200 Gb). It your system drive does not have enough free space, it is recommended to move Ubuntu distribution to non-system drive, for example to the drive D.
 
     Open PowerShell and execute the following steps in it to move Ubuntu distribution:
 
@@ -76,9 +82,9 @@
 
     **Welcome! Your Ubuntu is ready.**<br>
 
-    *Note:* your home directory in the Ubuntu is **/home/[user]** where *[user]* is your default user. It can be simple openen everywhere using command: `cd ~`.
+    *Note:* your home directory in the Ubuntu is **/home/[user]** where *[user]* is your default user. It can be simple opened everywhere using command: `cd ~`.
 
-    *Note:* Recommended to install **Midnight Commander** (mc) file manager to simply navigate through Linux file system, view/open files, etc; especially if you do not have expirience with Unix platforms.<br>
+    *Note:* Recommended to install **Midnight Commander** (mc) file manager to simply navigate through Linux file system, view/open files, etc; especially if you do not have experience with Unix platforms.<br>
     To install Midnight Commander file manager simple execute following commands:
     ```
     ~$ sudo apt update
@@ -210,7 +216,7 @@ Execute the following commands:
     where *[user]* is your default user.<br>
     Note the use of an absolute path here.
 
-    ![alt text](img/info.png) _**Suggestion:**_ The above export works in the scope of the one WSL session. It means that the above **export** of the *depot_tools* to the **PATH** environment variable is temorary and will be lost if the WSL session is reopened or terminated by different causes and then opened again.<br>
+    ![alt text](img/info.png) _**Suggestion:**_ The above export works in the scope of the one WSL session. It means that the above **export** of the *depot_tools* to the **PATH** environment variable is temporary and will be lost if the WSL session is reopened or terminated by different causes and then opened again.<br>
     Therefore, it can be added to the user's **.bashrc** script to avoid loosing *depot_tools* path and avoid further problems with the build.<br>
     It can be done using following command:<br>
     `~$ echo 'export PATH="$HOME/projects/cef/depot_tools:$PATH"' >> ~/.bashrc`
@@ -274,22 +280,71 @@ After download completion, the CEF source code will be copied to **"~/projects/c
     ```
     src/third_party/angle/third_party/glmark2/src (ERROR)
     ...
-    Error: Command 'git -c core.deltaBaseCacheLimit=2g fetch origin --no-tags' returned non-zero exit status 128 in /home/dmdu/projects/cef/chromium_git/chromium/src/third_party/angle/third_party/glmark2/src
+    Error: Command 'git -c core.deltaBaseCacheLimit=2g fetch origin --no-tags' returned non-zero exit status 128 in /home/[user]/projects/cef/chromium_git/chromium/src/third_party/angle/third_party/glmark2/src
     ```
     then it is recommended to remove source directory with broken indexes and start `update.sh` Bash script again:
     ```
-    ~/projects/cef/chromium_git$ rm -rf /home/dmdu/projects/cef/chromium_git/chromium/src/third_party/glmark2/src
+    ~/projects/cef/chromium_git$ rm -rf /home/[user]/projects/cef/chromium_git/chromium/src/third_party/glmark2/src
     ~/projects/cef/chromium_git$ ./update.sh
     ```
 
-9. Configure `GN_DEFINES` for your desired build environment.<br>
+9. **This step is very important!**<br>
+Execute it before each CEF build and check its as described below.<br><br>
+Configure `GN_DEFINES` for your desired build environment.<br>
 Chromium provides `sysroot` images for consistent builds across Linux distros. The necessary files will have downloaded automatically as part of step 8 above. **Usage of Chromium’s `sysroot` is recommended** if you don’t want to deal with potential build breakages due to incompatibilities with the package or kernel versions that you’ve installed locally. To use the `sysroot` image configure the following `GN_DEFINES`:<br>
     ```
-    export GN_DEFINES="use_sysroot=true use_allocator=none symbol_level=1 is_cfi=false use_thin_lto=false"
+    export GN_DEFINES="is_official_build=true use_sysroot=true symbol_level=1 is_cfi=false"
     ```
-    ✅ *Note:* The above specified `GN_DEFINES` for `sysroot` image was used in the current build process.
+    ✅ *Note:* The above specified `GN_DEFINES` for `sysroot` image was used in the current build process. It is used to build official build with all necessary libraries and links it correctly (CEF works without `SIGSEGV` memory errors or similar in OSR mode).<br>
+    Also, the following `GN_DEFINES` can be specified to make a correct build right for X11 or Wayland Linux Display Servers (graphical subsystem):
+    ```
+    export GN_DEFINES="is_official_build=true use_ozone=true ozone_platform_x11=true ozone_platform_wayland=true use_sysroot=true is_debug=false symbol_level=1 is_cfi=false"
+    ```
+    It was checked and it was worked.
 
-    It is also possible to build using locally installed packages instead of the provided sysroot. Choosing this option may require additional debugging effort on your part to work through any build errors that result. On Ubuntu 18.04 the following `GN_DEFINES` have been tested to work reliably:
+    ❌ *Attention!* Do not use specific parameters in a `GN_DEFINES` whose exact purpose you do not know!
+    The following parameters might broke your CEF build or have unpredictable errors during runtime (for example, memory errors `SIGSEGV` or similar in OSR mode):
+    ```
+    use_thin_lto
+    use_vaapi
+    is_component_build
+    use_allocator
+    use_partition_alloc_as_malloc
+    ```
+    ![Warning](img/warn.png) Specified by export `GN_DEFINES` can be displayed using command: `echo "$GN_DEFINES"`.
+    The full list of the arguments (`args.gn`) used for the CEF build can be displayed using following command:
+    ```
+    ~$cat ~/projects/cef/chromium_git/chromium/src/out/Release_GN_x64/args.gn
+    ```
+    Example of output:
+    ```
+    blink_heap_inside_shared_library=true
+    clang_use_chrome_plugins=false
+    disable_fieldtrial_testing_config=true
+    enable_background_mode=false
+    enable_backup_ref_ptr_support=false
+    enable_downgrade_processing=false
+    enable_linux_installer=false
+    enable_resource_allowlist_generation=false
+    enable_widevine=true
+    forbid_non_component_debug_builds=false
+    is_cfi=false
+    is_component_build=false
+    is_debug=false
+    is_official_build=true
+    optimize_webui=true
+    symbol_level=1
+    target_cpu="x64"
+    use_partition_alloc_as_malloc=false
+    use_qt5=false
+    use_qt6=false
+    use_sysroot=true
+    ```
+    ![alt text](img/info.png) **Please check them before each CEF build. It is very important step, please do it!**<br>
+    ![alt text](img/info.png) *Note*: The `cef_create_projects.sh` script merges `GN_DEFINES` into `args.gn` file that will be used for the next CEF build.
+
+    ![Warning](img/warn.png) **It is not verified and does not recommended by me, however, it is present in the official instruction.**<br>
+    It is also possible to build using locally installed packages instead of the provided sysroot. Choosing this option may require additional debugging effort on your part to work through any build errors that result. On Ubuntu 18.04 the following `GN_DEFINES` have been tested to work reliably (uses `use_vaapi` parameter might turn off hardware accelerated video encoding, I do not recommend to use it):
     ```
     export GN_DEFINES="use_sysroot=false use_allocator=none symbol_level=1 is_cfi=false use_thin_lto=false use_vaapi=false"
     ```
@@ -352,7 +407,7 @@ It can be done using standard Windows Explorer:
 Or it can be done via Linux terminal:
     ```
     ~/projects/cef/chromium_git/chromium/src$ cd ~
-    ~$ mkdir /home/dmdu/projects/patches
+    ~$ mkdir /home/[user]/projects/patches
     ~/projects/patches$ cp /mnt/d/work/wsl/patches/cef.diff ~/projects/patches/
     ~/projects/patches$ ls -lh
     ```
@@ -363,7 +418,11 @@ Or it can be done via Linux terminal:
     ```
     Check that the changes were applied:<br>
     `git status`<br>
-    In the output, you should see a list of files under the heading `Changes not staged for commit` (e.g. `modified: libcef/browser/alloy/alloy_browser_host_impl.cc`). This confirms that the code on disk has been successfully updated to match your modifications file.
+    In the output, you should see a list of files under the heading `Changes not staged for commit` (e.g. `modified: libcef/browser/alloy/alloy_browser_host_impl.cc`). This confirms that the code on disk has been successfully updated to match your modifications file.<br>
+    Also, detailed changes can be displayed using `git diff` command:
+    ```
+    ~/projects/cef/chromium_git/chromium/src/cef$ git diff
+    ```
 
 15. Regenerate Hashes and Rebuild CEF with applied changes.<br>
     After applying the patch, the files on the disk will be updated. Therefore, the CEF should be rebuilt. However, it is not necessary to wait another 4 hours for a build CEF again! Thanks to the smart Ninja/Siso system, the next launch will automatically perform an **incremental build**:
@@ -377,7 +436,9 @@ Or it can be done via Linux terminal:
         ~/projects/cef/chromium_git/chromium/src$ autoninja -C out/Release_GN_x64 cefsimple ceftests -j 8
 
         ```
-        The compiler will quickly run through CEF source files, see that only one or some files from the patch (diff) have changed, recompile only them in 2-3 minutes and update the final binaries.
+        The compiler will quickly run through CEF source files, see that only one or some files from the patch (diff) have changed, recompile only them in 2-3 minutes and update the final binaries.<br>
+    - ![Warning](img/warn.png) This secondary incremental build should be verified because it executes full long build. Need to check `gclient_hook.py` possibilities.
+    
 
 16. Rerun the `cefsimple` and/or `ceftests` sample applications to check the modified CEF build. <br>
     ```
@@ -398,8 +459,8 @@ To create binary distribution package open `tools` folder and run `make_distrib.
     ```
     ~/projects/cef/chromium_git/chromium/src/cef/binary_distrib$ ls -lh
     total 692M
-    drwxr-xr-x 8 dmdu dmdu 4.0K Jun 23 06:28 cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal
-    -rw-r--r-- 1 dmdu dmdu 692M Jun 23 06:29 cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal.zip
+    drwxr-xr-x 8 4.0K Jun 23 06:28 cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal
+    -rw-r--r-- 1 692M Jun 23 06:29 cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal.zip
     ```
 
     See the `make_distrib.py` script for additional usage options (if necessary). <br>
@@ -410,7 +471,7 @@ To create binary distribution package open `tools` folder and run `make_distrib.
     It is necessary to check size of the `libcef.so` library after the building.<br>
     Even if the build was made in the `release` profile, the `libcef.so` library might have many debugging information and has a very large size. For example, after the build described in the current instruction, the `libcef.so` library has 2.5 Gb size (due to Google scripts mostly ignores `release` profile and add debugging info and symbols in the library). And it is inappropriate. The Maven cannot pack the files larger than 2 Gb to the JAR.<br>
     The `strip` native Linux command can help to remove unnecessary debugging information and symbols.<br>
-    Execute the following commands to reduce size of the `libcef.so` library (if it is necessary:
+    Execute the following commands to reduce size of the `libcef.so` library (if it is necessary):
     ```
     ~/projects/cef/chromium_git/chromium/src/cef/binary_distrib$ cd cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal/Release/
 
@@ -425,7 +486,9 @@ To create binary distribution package open `tools` folder and run `make_distrib.
 
     ~/projects/cef/chromium_git/chromium/src/cef/binary_distrib/cef_binary_143.0.14+gdd46a37+chromium-143.0.7499.193_linux64_minimal/Release$ strip --strip-all chrome-sandbox
     ```
-    This operation reduces the overall size of the CEF native libraries for future usage as released.
+    This operation reduces the overall size of the CEF native libraries for future usage as release. It made the size of the CEF native libraries less than 35.8% in my example.<br>
+
+    ![alt text](img/warn.png) *Note*: It is necessary to check that the CEF native libraries are working as expected because sometimes the `strip` command might broke some necessary features/memory allocation tables via removing symbols that it marks as debugging. Check it at least using `cefsimple` or `ceftests`.
 
 ---
 <br><br>
@@ -496,7 +559,7 @@ What is means:<br>
         `/usr/lib/jvm/java-21-openjdk-amd64`<br>
 
     - Install **Python 3.12**:
-    Enable `Deadsnakes PPA` repository to install inactual old packages:
+    Enable `Deadsnakes PPA` repository to install unactual old packages:
         ```
         ~$ sudo apt update
         ~$ sudo apt install software-properties-common -y
@@ -617,7 +680,7 @@ Run CMake to generate Linux project files and then build the resulting native ta
     ```
     -- Configuring done (13.3s)
     -- Generating done (0.1s)
-    -- Build files have been written to: /home/[user]]/projects/jcef/jcef_build
+    -- Build files have been written to: /home/[user]/projects/jcef/jcef_build
     ```
     If project generation is failed, the errors should be fixed.<br>
 
@@ -646,7 +709,7 @@ Run CMake to generate Linux project files and then build the resulting native ta
         If the problem is still occurred (the `ModuleNotFoundError: No module named 'six.moves'` error is still displayed), it can be internal specific bug of the `gsutil` Google library. In this case, it is possible to use following hack: add correct system `six` module directly to the `gsutil`.<br>
         Find broken `six` module:<br>
         ```
-        ~/projects/jcef/jcef_build$ cd /home/dmdu/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party
+        ~/projects/jcef/jcef_build$ cd /home/[user]/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/third_party
         ```
         Change broken `six` module to the system `six` module using following commands (if the system `six` folder is present in the `/usr/lib/python3/dist-packages/`):
         ```
@@ -678,7 +741,7 @@ Run CMake to generate Linux project files and then build the resulting native ta
         In this case, it is a similar problem in the internal subsystem `boto` (library for Amazon/Google cloud, which `gsutil` uses). It also tries to import `six.moves` from own old developer folders `boto.vendored.six.moves`, and cannot do it because rules of the packages downloading are updated in the new Python versions.<br>
         Do next steps in the Ubuntu terminal:<br>
         ```
-        ~/projects/jcef/jcef_build$ cd /home/dmdu/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/gslib/vendored/boto/boto/vendored
+        ~/projects/jcef/jcef_build$ cd /home/[user]/projects/jcef/tools/buildtools/external_bin/gsutil/gsutil_4.68/gsutil/gslib/vendored/boto/boto/vendored
         ```
         If the `six` folder is exists, rename it:
         ```
@@ -810,13 +873,13 @@ Execute following commands:
     ![Warning](img/warn.png) Troubleshooting of building JCEF Java classes:
     - Error:
         ```
-        /home/dmdu/projects/jcef/java/org/cef/handler/CefDisplayHandler.java:36: error: cannot find symbol
+        /home/[user]/projects/jcef/java/org/cef/handler/CefDisplayHandler.java:36: error: cannot find symbol
         public void onFaviconURLChange(CefBrowser browser, Vector<String> iconsUrls);
                                                         ^
         symbol:   class Vector
         location: interface CefDisplayHandler
 
-        /home/dmdu/projects/jcef/java/org/cef/handler/CefDisplayHandlerAdapter.java:28: error: cannot find symbol
+        /home/[user]/projects/jcef/java/org/cef/handler/CefDisplayHandlerAdapter.java:28: error: cannot find symbol
             public void onFaviconURLChange(CefBrowser browser, Vector<String> iconsUrls) {
                                                             ^
         symbol:   class Vector
@@ -925,7 +988,7 @@ Details can be found in the `Step 6` but the `run.sh` Bash script should be exec
 ---
 <br><br>
 
-# PSP application building and running
+# PSP application building (on the WSL Linux or separate VM)
 To build PSP application from source code you should begin by installing the build tools and application server for Linux operating system.<br> 
     
 **It is necessary to install:**
@@ -1016,7 +1079,7 @@ To build PSP application from source code you should begin by installing the bui
         The build should be finished successfully:
         ```
         [INFO]
-        /home/dmdu/.m2/repository
+        /home/[user]/.m2/repository
         [INFO] ------------------------------------------------------------------------
         [INFO] BUILD SUCCESS
         [INFO] ------------------------------------------------------------------------
@@ -1091,7 +1154,7 @@ To build PSP application from source code you should begin by installing the bui
 
         ![alt text](img/info.png) **Suggestion**:
         Import the `PT CA Certificate` certificate into the Java 21 repository (Cacerts).<br>
-        The Java 21 virtual machine (JVM) may block connections to the required Playtech services in the future, because Java on Linux has its own, isolated store of trusted certificates (Cacerts), and it completely ignores the Linux system-wide certificates (where the certificate was added in the step above). To prevent future problems with CA Certificates, it is necesary to import the PT CA SSL certificate directly into the certificate store of the Java 21 installation using the built-in keytool utility.<br>
+        The Java 21 virtual machine (JVM) may block connections to the required Playtech services in the future, because Java on Linux has its own, isolated store of trusted certificates (Cacerts), and it completely ignores the Linux system-wide certificates (where the certificate was added in the step above). To prevent future problems with CA Certificates, it is necessary to import the PT CA SSL certificate directly into the certificate store of the Java 21 installation using the built-in keytool utility.<br>
         Use the following command to install already downloaded `PT CA Certificate` to the Java 21 certificate store:
         ```
         ~$ sudo keytool -importcert -trustcacerts \
@@ -1101,30 +1164,8 @@ To build PSP application from source code you should begin by installing the bui
             -storepass changeit -noprompt
         ```
         The `Certificate was added to keystore` line in the console output shows that the `PT CA Certificate` is added to the he Java 21 certificates repository (`CaCerts`) successfully.<br><br>
-- Install **Apache `Tomcat 11`**<br>
-    Execute following command to install Tomcat 11 server/service using `apt` package manager:
-    ```
-    ~$ sudo apt update
-    ~$ sudo apt install tomcat11 -y
-    ```
-    Check that Tomcat 11 service is installed and running using command:
-    ```
-    ~$ sudo systemctl status tomcat11
-    ```
-    The following output should be displayed:
-    ```
-    ● tomcat11.service - Apache Tomcat 11 Web Application Server
-     Loaded: loaded (/usr/lib/systemd/system/tomcat11.service; enabled; preset: enabled)
-     Active: active (running) since Thu 2026-07-16 17:10:01 EEST; 8min ago
-    Invocation: 01adb8fdd08a4796afb1f533bf009b09
-        Docs: https://tomcat.apache.org/tomcat-11.0-doc/index.html
-    Main PID: 4639 (java)
-    ...
-    ```
-    ![alt text](img/info.png) In the previous versions of the Ubuntu the Tomcat 11 is absent in the repositories and should be installed manually (or use Tomcat 10).
-<br><br>
 
-### **Downloading, Building and Starting PSP application**
+### **Downloading and Building PSP application**
 
 1. **Copy or Download PSP sources.**<br>
     It can be done using two ways:
@@ -1277,61 +1318,696 @@ To build PSP application from source code you should begin by installing the bui
         total 264
         -rw-r--r-- 1 1000 1000 245238 Jul 24 17:05 psp-1.x-SNAPSHOT.jar
         ```
-        This `PSP` JAR file can be executed without `Tomcat` server using `JAVA`.
-        
-3. **Running the PSP application.**
-    - As `PSP` WAR application:<br>
-        - Check status of the Tomcat 11 server (service) using command:
-            ```
-            ~$ sudo systemctl status tomcat11
-            ```
-            The `Active: inactive (dead)` line should be in the output.<br>
-            If the `Active: active (running)` line is displayed in the output, stop `Tomcat` using following command:
-            ```
-            ~$ sudo systemctl stop tomcat11
-            ```
-            Recheck that `Tomcat` is stopped again.
-
-        - Remove old `PSP` WAR application and unarchived folder (if `PSP` WAR application was deployed before):
-            ```
-            ~$ sudo rm -rf /var/lib/tomcat11/webapps/psp
-            ~$ sudo rm -f /var/lib/tomcat11/webapps/psp.war
-            ```            
-        - Go to the `~/projects/stream/video-stream/target` folder and rename `psp-1.x-SNAPSHOT.war` file to the `psp.war`:
-            ```
-            ~$ cd ~/projects/stream/video-stream/target/
-            ~/projects/stream/video-stream/target$ mv psp-1.x-SNAPSHOT.war psp.war
-            ```
-            Check that `psp.war` renamed: `ls -lh | grep psp.war`. The `psp.war` should be in the Bash output.
-        - Copy `psp.war` WAR application file to the `/var/lib/tomcat11/webapps/` folder (with administrator privileges):
-            ```
-            ~/projects/stream/video-stream/target$ sudo cp psp.war /var/lib/tomcat11/webapps/
-            ```
-        - Start `Tomcat` server using command:
-            ```
-            ~$ sudo systemctl start tomcat11
-            ```
-            Check that `Tomcat` server is running:
-            ```
-            ~$ sudo systemctl status tomcat11
-            ```
+        This `PSP` JAR file can be executed without `Tomcat` server using `JAVA`.<br>
+        We will use this way below.
+    
+    - ![alt text](img/info.png) Now the PSP application is built and ready deploy and start.<br><br>
 
 
 
-    - As separate `PSP` JAR application:
+# Deploying and Running the PSP application (on the AWS Ubuntu instance)
+We will use a separate AWS Ubuntu PSP VM for running the PSP application. It will allow us to increase the time to scale for further PSP application usage in production.
 
-        
-        
-        
-        
-        
-        
-        
-        command:
+### Create AWS Ubuntu VM.
+1. The access to the Playtech AWS console is necessary (via https://myapps.microsoft.com/).<br>
+It can be requested via AMS Playtech system. <br>
+When request will be approved, the appropriate AWS application should be available:
+![alt text](img/aws.png)<br>
+Also, S2S tunnel should be approved and configured by Playtech Security team and setup on the AWS. Details can be provided by request.
+2. Open EC2 EC2 service console
+    - Click above AWS application to open Playtech AWS console.
+    - Open EC2 computing service.
+    - Click Instances in the left menu. As result, the all existing instances will be displayed.
+3. Create AWS Ubuntu instance
+    - Click orange "Launch instances" button in the right top corner.
+    - Enter Name of the further instance, for example "psp-ubuntu-server".
+    - Click "Add additional tags"
+    - Click "Add new tag" and add following tags:
+        - owner = [your users]
+        - team = Casino Mobile (Game-common)
+        ![alt text](img/ec2-ins1.png)
+    - Select Ubuntu Server 26.04 LTS as OS Image:
+    ![alt text](img/ec2-ins2.png)
+    - Select "g4dn.xlarge" Instance type.
+    - Select already created or create new key pair (it is very important step, this login pair will be used for login to your instance).
+    ![alt text](img/ec2-ins3.png)
+    - Network settings (important!). Click "Edit" and specify:
+        - VPC = vpc-08bf9431ad8a4e5f8 (psp-vpc)
+        - Subnet - should be specified automatically (psp-subnet-private-eu-north-1a)
+        - Firewall (security groups) -> Select existing and choose "psp-private-subnet-group". It is already configured group with mandatory Playtech requirements:
+        ![alt text](img/ec2-ins4.png)
+    - Configure storage = 50 GiB (it can be enough for now)
+    - Check Summary and click "Launch instance" button in the right bottom corner:
+     ![alt text](img/ec2-ins5.png)<br>
+    The AWS Ubuntu instance is created. Creates instance will be displayed in the "Instances" list.
+    - Check Security settings of your created instance. <br>
+    ![alt text](img/warn.png) The 22 (SSH) and 3389 (RDP) should be available from Playtech VPN subnet only! The 443, 8085, 80, 8080 ports can be available from everywhere.
+4. Connect to the created AWS Ubuntu instance
+    - All following steps should be done under Playtech VPN enabled!
+    - Open Terminal (Power Shell on the Windows).
+    - Enter following command:
         ```
-        ~/projects/stream/video-stream/target$ java -jar psp-1.x-SNAPSHOT.jar
+        ssh -i "psp-key-pair.pem" ubuntu@[Private IP address]
+        ```
+        where "psp-key-pair.pem" is your key pair file, and "[Private IP address]" is Private IP address that can be found in the your instance information (in the "Instances" list too). For example:
+        ```
+        ssh -i "psp-key-pair.pem" ubuntu@10.191.152.170
+        ```
+        Enter 'Yes'.
+        Welcome, you connected to your AWS Ubuntu server:
+        ```
+        Welcome to Ubuntu 26.04 LTS (GNU/Linux 7.0.0-1006-aws x86_64)
+        ```
+### Preinstall/prepare AWS Linux PSP VM with necessary packages and software
+
+Open SSH session to the AWS Ubuntu PSP VM through Private IP address of the VM and execute next steps:
+
+1. Update AWS Linux packets and install base packages.
+    - Execute commands one by one:
+        ```
+        ~$ sudo apt update && sudo apt upgrade -y
+        ~$ sudo apt install -y build-essential curl wget git ca-certificates gnupg pciutils usbutils
+        ```
+    - Tune Linux Kernel (this Kernel tuning is required for Chromium/CEF):
+        ```
+        ~$ echo 'vm.max_map_count=1048576' | sudo tee -a /etc/sysctl.conf
+        ~$ sudo sysctl -p
+        ```
+        Output should be: `vm.max_map_count = 1048576`.
+
+    - ![alt text](img/info.png) Optionally install Midnight Commander for more usable browsing through Ubuntu file system:
+        ```
+        ~$ sudo install mc -y
+        ```
+2. Install NVIDIA driver (T4)
+     - Check drivers:
+        ```
+        ~$ ubuntu-drivers devices
+        ```
+        ![alt text](img/info.png) If the command was not found, install the "ubuntu-drivers" packet using command `sudo apt install ubuntu-drivers-common`.<br>
+        Output should be like following:
+        ```
+        == /sys/devices/pci0000:00/0000:00:1e.0 ==
+        modalias : pci:v000010DEd00001EB8sv000010DEsd000012A2bc03sc02i00
+        vendor   : NVIDIA Corporation
+        model    : TU104GL [Tesla T4]
+        driver   : nvidia-driver-580 - distro non-free
+        driver   : nvidia-driver-595-server - distro non-free
+        driver   : nvidia-driver-580-server - distro non-free
+        driver   : nvidia-driver-580-open - distro non-free
+        driver   : nvidia-driver-610 - distro non-free
+        driver   : nvidia-driver-595-open - distro non-free recommended
+        driver   : nvidia-driver-595 - distro non-free
+        driver   : nvidia-driver-595-server-open - distro non-free
+        driver   : nvidia-driver-610-open - distro non-free
+        driver   : nvidia-driver-580-server-open - distro non-free
+        driver   : xserver-xorg-video-nouveau - distro free builtin
+        ```
+        Install recommended driver (or driver that you want) using command:
+        ```
+        ~$ sudo ubuntu-drivers install
+        ```
+        Reboot AWS Ubuntu PSP VM OS:
+        ```
+        ~$ sudo reboot
+        ```
+        Check if the installation was successful (after reboot):
+        ```
+        ~$ nvidia-smi
+        ```
+        Output should contain `Tesla T4`:
+        ![alt text](img/t4-info.png)
+
+    - Add permissions for graphical system, command: 
+        ```
+        ~$ sudo usermod -aG video,render $USER
+        ```
+        Log out SSH session and connect back in.<br>
+        Check result using command:
+        ```
+        ~$ ls -la /dev/nvidia* /dev/dri/
+        ```
+        Output should be like following:
+        ```
+        crw-rw-rw- 1 root root 195, 254 Sep 14 13:39 /dev/nvidia-modeset
+        crw-rw-rw- 1 root root 234,   0 Sep 14 13:39 /dev/nvidia-uvm
+        crw-rw-rw- 1 root root 234,   1 Sep 14 13:39 /dev/nvidia-uvm-tools
+        crw-rw-rw- 1 root root 195,   0 Sep 14 13:39 /dev/nvidia0
+        crw-rw-rw- 1 root root 195, 255 Sep 14 13:39 /dev/nvidiactl
+
+        /dev/dri/:
+        total 0
+        drwxr-xr-x  3 root root        120 Sep 14 13:39 .
+        drwxr-xr-x 16 root root       3620 Sep 14 13:39 ..
+        drwxr-xr-x  2 root root        100 Sep 14 13:39 by-path
+        crw-rw----  1 root video  226,   0 Sep 14 13:39 card0
+        crw-rw----  1 root video  226,   1 Sep 14 13:39 card1
+        crw-rw----  1 root render 226, 128 Sep 14 13:39 renderD128
+        ```
+    - Check and install `Xorg` display service/EGL/X11 libraries.<br>
+        - Check that `xserver-xorg` driver was installed, command:
+            ```
+            ~$ dpkg -l | grep xserver-xorg-video-nvidia
+            ```
+            Output should be like following (driver version might be different but should be equal the installed previously NVidia driver version, that can be displayed using `nvidia-smi` command):
+            ```
+            ii  xserver-xorg-video-nvidia-595                595.91.07-0ubuntu0.26.04.1                 amd64        NVIDIA binary Xorg driver
+            ```
+            It means that the `NVIDIA binary Xorg driver 595.91.07-0ubuntu0.26.04.1` was correctly installed.<br>
+            ![alt text](img/warn.png) If output contains nothing, check video driver installation.<br>
+            Also, check that the NVidia driver is physically present using command:
+            ```
+            ~$ sudo find /usr -name 'nvidia_drv.so' 2>/dev/null
+            ```
+            Output should contains path to the `nvidia_drv.so` driver, for example:
+            ```
+            /usr/lib/x86_64-linux-gnu/nvidia/xorg/nvidia_drv.so
+            ```
+        - Install base X packages using command (looks like it is might be optional step since `xserver-xorg-video-nvidia` was already installed, but this step is present in the different documents):
+            ```
+            ~$ sudo apt install -y xorg xserver-xorg-core xserver-xorg-video-dummy
+            ```
+        - Install libraries that are necessary for Chromium/CEF/WebRTC using command:
+            ```
+            ~$ sudo apt install -y \
+                libx11-6 libxext6 libxrender1 libxtst6 libxi6 libxrandr2 \
+                libxcomposite1 libxdamage1 libfontconfig1 libfreetype6 \
+                libnss3 libnspr4 libatk1.0-0t64 libatk-bridge2.0-0t64 \
+                libdrm2 libdbus-1-3 libxkbcommon0 libatspi2.0-0t64 \
+                libegl1 libegl-mesa0 libgl1 libgl1-mesa-dri libglx-mesa0 \
+                libgles2 libglvnd0 mesa-utils libcups2t64 \
+                fonts-liberation fonts-dejavu-core libpulse0 \
+                gdb
+            ```
+            Check that major libraries were installed:
+            ```
+            ~$ dpkg -l mesa-utils libegl1 libnss3 libatk-bridge2.0-0t64 libpulse0 2>/dev/null | grep ^ii
+            ```
+            Output should contains information about installed packages.
+
+3. Check and setup `Xorg` Display Server as service with correct GPU.
+    - Check GPU and display. Execute next command:
+        ```
+        ~$ nvidia-xconfig --query-gpu-info
+        ```
+        Output should contain `Tesla T4` GPU name (or similar used for your AWS Linux):
+        ```
+        Number of GPUs: 1
+
+        GPU #0:
+        Name      : Tesla T4
+        UUID      : GPU-e648b567-c6a7-c75d-1168-61a2b36b7065
+        PCI BusID : PCI:0:30:0
+        ```
+        Remember `PCI BusID` value (the `PCI:0:30:0` in our example).<br>
+
+        Also check if default `Xorg` configuration uses `NVIDIA Tesla T4` GPU. Execute follwing commands as one batch:
+        ```
+        sudo systemctl stop xrdp lightdm gdm3 2>/dev/null
+        sudo pkill -9 Xorg 2>/dev/null
+        sleep 2
+        sudo rm -f /tmp/.X0-lock /tmp/.X11-unix/X0
+        # No -config flag
+        sudo X :0 -ac &
+        sleep 3
+        export DISPLAY=:0
+        glxinfo -B | grep -E 'OpenGL vendor|OpenGL renderer'
+        ```
+        Output should contain following:
+        ```
+        OpenGL vendor string: NVIDIA Corporation
+        OpenGL renderer string: Tesla T4/PCIe/SSE2
+        ```
+        - ✅ If it contains vendor and renderer as displayed above - OK, do setup `Xorg` as service step.
+
+        - ❌ If it displays other vendor and renderer (vendor: `Mesa`,      renderer: `llvmpipe` or others), it is necessary to create `xorg.conf` file to allow use the `NVIDIA` vendor and renderer.<br>
+        In this case create default `` it is necessary to execute following command:
+            ```
+            ~$ sudo nvidia-xconfig --allow-empty-initial-configuration
+            ```
+            That creates default `/etc/X11/xorg.conf` with correct GPU specification.<br>
+            Check that `Bus ID` is the same as `nvidia-xconfig --query-gpu-info` returned (the first step in this section) in the `/etc/X11/xorg.conf` configuration file.<br>
+            Execute two commands:
+            ```
+            ~$ nvidia-xconfig --query-gpu-info
+            ~$ grep -i BusID /etc/X11/xorg.conf
+            ```
+            The `Bus ID` should be the same in the output of both commands, for example:
+            ```
+            ~$ nvidia-xconfig --query-gpu-info
+            Number of GPUs: 1
+
+            GPU #0:
+            Name      : Tesla T4
+            UUID      : GPU-e648b567-c6a7-c75d-1168-61a2b36b7065
+            PCI BusID : PCI:0:30:0
+
+            Number of Display Devices: 0
+
+            ~$ grep -i BusID /etc/X11/xorg.conf
+                BusID          "PCI:0:30:0"
+            ```
+            It is `PCI:0:30:0` in the above example.<br>
+
+            Execute the following batch of the commands again:
+            ```
+            sudo systemctl stop xrdp lightdm gdm3 2>/dev/null
+            sudo pkill -9 Xorg 2>/dev/null
+            sleep 2
+            sudo rm -f /tmp/.X0-lock /tmp/.X11-unix/X0
+            # No -config flag
+            sudo X :0 -ac &
+            sleep 3
+            export DISPLAY=:0
+            glxinfo -B | grep -E 'OpenGL vendor|OpenGL renderer'
+            ```
+            Output should contain following:
+            ```
+            OpenGL vendor string: NVIDIA Corporation
+            OpenGL renderer string: Tesla T4/PCIe/SSE2
+            ```
+            ✅ If it contains vendor and renderer as displayed above - OK, do setup `Xorg` as service step.<br>
+        
+        After that do setup `Xorg` as service step or create manual scripts (optional).<br>
+
+    - Create manual Scripts for verification `Xorg` configuration - ![alt text](img/info.png) optional step.
+        It is possible to create verification scripts to make sure that the `Xorg` display server works correctly with correct GPU/Vendor.<br>
+        Create `scripts` folder:
+        ```
+        ~$ mkdir scripts
+        ```
+        Copy here following scripts:
+        - [xorg-startup.sh](./scripts/xorg-startup.sh) 
+        - [verify-xorg.sh](./scripts/verify-xorg.sh)
+        - [xorg-stop.sh](./scripts/xorg-stop.sh) 
+
+        Set them permissions for executing:
+        ```
+        ~$ cd scripts/
+        ~/scripts$ sudo chmod +x *.sh
         ```
 
+        The `xorg-startup.sh` starts `Xorg` display server with necessary configuration. Execute this script in the terminal.<br>
+        Open other SSH session and execute `verify-xorg.sh` script. The output should be following:
+        ```
+        ~$ ./scripts/verify-xorg.sh
+        DISPLAY=:0
+
+        === glxinfo (10s timeout) ===
+        OpenGL vendor string: NVIDIA Corporation
+        OpenGL renderer string: Tesla T4/PCIe/SSE2
+
+        PASS: NVIDIA GPU active
+        ```
+        - ✅ It means that `Xorg` display server works correctly with display `:0`, and uses the correct `NVIDIA Tesla T4/PCIe/SSE2` driver.<br>
+        - ❌ If output is different and contains `FAIL: unexpected GL vendor` string - it means that something in the `Xorg` display service configuration/execution went wrong and need to be investigated.<br>
+
+        Execute `xorg-stop.sh` script to stop `Xorg` display service before next step (Register `Xorg` display server as Linux service).<br>
+
+        ![alt text](img/info.png) It is possible that both SSH sessions should be restarted after executing scripts.
+
+    - Register `Xorg` display server as Linux service
+        It is necessary to register `Xorg` display server as Linux service to avoid executing configuration scripts manually each time after AWS Ubuntu VM reboot.<br>
+
+        Create `xorg-nvidia.service` configuration file for the new service in the `/etc/systemd/system/` folder:
+        ```
+        ~$ cd /etc/systemd/system/
+        sudo nano xorg-nvidia.service
+        ```
+        Enter to the file following lines:
+        ```
+        [Unit]
+        Description=NVIDIA Xorg on :0 for PSP
+        After=network.target
+        Conflicts=xrdp.service lightdm.service gdm3.service sddm.service
+
+        [Service]
+        Type=simple
+        Environment=DISPLAY=:0
+
+        ExecStartPre=-/bin/systemctl stop xrdp.service lightdm.service gdm3.service sddm.service
+        ExecStartPre=-/bin/systemctl stop xorg-manual.service
+        ExecStartPre=-/usr/bin/pkill -9 -x Xorg
+        ExecStartPre=-/bin/sh -c 'rm -f /tmp/.X0-lock /tmp/.X11-unix/X0'
+        ExecStartPre=/bin/test -f /etc/X11/xorg.conf
+
+        ExecStart=/usr/lib/xorg/Xorg :0 vt7 -config /etc/X11/xorg.conf -ac -noreset -nolisten tcp
+
+        Restart=on-failure
+        RestartSec=5
+        TimeoutStartSec=60
+
+        [Install]
+        WantedBy=multi-user.target
+        ```
+        Press F2, Y and Enter buttons.<br>
+
+        Also, the `xorg-nvidia.service` file is available here - [xorg-nvidia.service](./scripts/xorg-nvidia.service)
+
+        Enter following commands to stop `Xorg` server and remove old logs:
+        ```
+        ~$ sudo pkill -9 -x Xorg 2>/dev/null
+        ~$ sudo rm -f /tmp/.X0-lock /tmp/.X11-unix/X0
+        ```
+        Prepare and start `Xorg` display server as Linux service:
+        ```
+        ~$ sudo systemctl daemon-reload
+        ~$ sudo systemctl start xorg-nvidia.service
+        ```
+        Check status of the new service:
+        ```
+        ~$ sudo systemctl status xorg-nvidia.service
+        ```
+        Output should be like following:
+        ```
+        ● xorg-nvidia.service - NVIDIA Xorg on :0 for PSP
+            Loaded: loaded (/etc/systemd/system/xorg-nvidia.service; enabled; preset: enabled)
+            Active: active (running) since Wed 2026-09-16 09:55:02 UTC; 5min ago
+        Invocation: 4af30c6213934528a458ccb2ce2bc4cd
+            Process: 3090 ExecStartPre=/bin/systemctl stop xrdp.service lightdm.service gdm3.service sddm.service (code=exited, status=5)
+            Process: 3091 ExecStartPre=/bin/systemctl stop xorg-manual.service (code=exited, status=5)
+            Process: 3093 ExecStartPre=/usr/bin/pkill -9 -x Xorg (code=exited, status=1/FAILURE)
+            Process: 3096 ExecStartPre=/bin/sh -c rm -f /tmp/.X0-lock /tmp/.X11-unix/X0 (code=exited, status=0/SUCCESS)
+            Process: 3099 ExecStartPre=/bin/test -f /etc/X11/xorg.conf (code=exited, status=0/SUCCESS)
+        Main PID: 3102 (Xorg)
+            Tasks: 2 (limit: 17120)
+            Memory: 18.1M (peak: 19.2M)
+                CPU: 298ms
+            CGroup: /system.slice/xorg-nvidia.service
+                    └─3102 /usr/lib/xorg/Xorg :0 vt7 -config /etc/X11/xorg.conf -ac -noreset -nolisten tcp
+        ...
+        ```
+        Check that the service is running, expected text: `Active: active (running)`, and started without errors in the `Main PID` section.<br>
+
+        Verify that correct GPU device is used by `Xorg` service using following batch of the commands:
+        ```
+        export DISPLAY=:0
+        export __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json
+        timeout 10 glxinfo -B | grep -E 'OpenGL vendor|OpenGL renderer'
+        ```
+        Output should be following:
+        ```
+        OpenGL vendor string: NVIDIA Corporation
+        OpenGL renderer string: Tesla T4/PCIe/SSE2
+        ```
+        Or simply execute `verify-xorg.sh` script (if prepared and exist):
+        ```
+        ~$ cd ~/scripts/
+        ~/scripts$ ./verify-xorg.sh
+        ```
+        Output should be following:
+        ```
+        DISPLAY=:0
+
+        === glxinfo (10s timeout) ===
+        OpenGL vendor string: NVIDIA Corporation
+        OpenGL renderer string: Tesla T4/PCIe/SSE2
+
+        PASS: NVIDIA GPU active
+        ```
+        ![alt text](img/warn.png) If output is different and contains `FAIL: unexpected GL vendor` string - it means that something in the `Xorg` display service configuration/execution went wrong and need to be investigated.<br>
+
+    - Check service after rebooting AWS Ubuntu VM.
+        Execute following command to Reboot test:
+        ```
+        sudo reboot
+        ```
+        Connect to the rebooted AWS Ubuntu VM via SSH again after small timeout.
+        Check the status of the `Xorg` service:
+        ```
+        ~$ sudo systemctl status xorg-nvidia.service
+        ```
+        Output should contain expected text: `Active: active (running)`, and started without errors in the `Main PID` section.<br>
+
+        Verify that correct GPU device is used by `Xorg` service using specified in the above section batch of the commands or using `verify-xorg.sh` script. The result should be following:
+        ```
+        DISPLAY=:0
+
+        === glxinfo (10s timeout) ===
+        OpenGL vendor string: NVIDIA Corporation
+        OpenGL renderer string: Tesla T4/PCIe/SSE2
+
+        PASS: NVIDIA GPU active
+        ```
+4. Install Java 21 (Temurin)<br>
+
+    Execute the following commands one by one:
+    ```
+    ~$ wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo tee /etc/apt/keyrings/adoptium.asc
+    ~$ echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(. /etc/os-release && echo $VERSION_CODENAME) main" | sudo tee /etc/apt/sources.list.d/adoptium.list
+    ~$ sudo apt update
+    ~$ sudo apt install -y temurin-21-jdk
+    ~$ java -version
+    ```
+    After the latest command the following Java version should be displayed in the output (example, might be slightly different, however, it should be `Temurin-21`):
+    ```
+    openjdk version "21.0.12.1" 2026-08-18 LTS
+    OpenJDK Runtime Environment Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS)
+    OpenJDK 64-Bit Server VM Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS, mixed mode, sharing)
+    ```
+    It is recommended to reboot AWS Ubuntu VM and check Java version after it:
+    ```
+    ~$ sudo reboot
+    ```
+    Reconnect via SSH. <br>
+    Execute:
+    ```
+    ~$ java -version
+    ```
+    The Java version should be the same as before reboot.<br>
+
+    ![alt text](img/warn.png) If other Java version is displayed aster reboot, the `Temurin 21 Java` should be marked as priority JVM or path to `Temurin 21 Java` should be specified in the `.bashrc` file.
+
+### Deploy and start PSP application to the AWS Ubuntu PSP VM<br>
+The PSP application should be built as JAR on the separate Linux machine before this step.
+
+Open SSH session to the AWS Ubuntu PSP VM (PSP VM) through Private IP address of the VM.<br>
+Open other SSH session to the Linux Build VM (Build VM) through Private IP address of the VM.
+
+1. In the PSP VM create `psp` folder:
+    ```
+    ~$ mkdir psp
+    ```
+2. In the Build VM go to the `~/projects/stream/video-stream` (build) folder and rename `psp-1.x-SNAPSHOT.jar` to `psp.jar`:
+    ```
+    ~$ cd projects/stream/video-stream/target/
+    ~/projects/stream/video-stream/target$ mv psp-1.x-SNAPSHOT.jar psp.jar
+    ```
+3. In the Build VM execute following commands to deploy `psp.jar` and libraries to the PSP VM:
+    ```
+    ~/projects/stream/video-stream/target$ scp -i "~/psp-key-pair.pem" psp.jar ubuntu@[Private IP address]:~/psp/
+    ~/projects/stream/video-stream/target$ scp -r -i "~/psp-key-pair.pem" lib/ ubuntu@[Private IP address]:~/psp/
+    ```
+    where "[Private IP address]" is Private IP address of the AWS PSP VM.<br>
+    Example, if Private IP address of the PSP VM is `10.191.152.10`:
+    ```
+    ~/projects/stream/video-stream/target$ scp -i "~/psp-key-pair.pem" psp.jar ubuntu@10.191.152.10:~/psp/
+    ~/projects/stream/video-stream/target$ scp -r -i "~/psp-key-pair.pem" lib/ ubuntu@10.191.152.10:~/psp/
+    ```
+4. Add specific variables to the `.bashrc` file to start PSP application from everywhere (optional step, however, it is highly recommended)
+
+    Open `bashrc` file on the PSP VM:
+    ```
+    ~$ nano .bashrc
+    ```
+    Add the following lines to the end of the file:
+    ```
+    # Specify display and GPU for PSP application
+    export DISPLAY=:0
+    export __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json
+    ```
+    Press F2, Y and Enter buttons.<br>
+    Enter following command to apply changes without re-login session:
+    ```
+    ~$ source ~/.bashrc
+    ```
+
+5. Now, the PSP application can be started on the PSP VM using following simple command (if previous optional step 4 was done):
+    ```
+    ~$ cd psp/
+    ~/psp$ java -Dtomcat.port=8080 -Djava.awt.headless=false -jar psp.jar
+    ```
+    Or from everywhere:
+    ```
+    /home$ java -Dtomcat.port=8080 -Djava.awt.headless=false -jar ~/psp/psp.jar
+    ```
+6. It is recommended to use startup scripts to start PSP application of the PSP VM provided in this section.
+    Step 4 is not necessary if the PSP application will be start using specific scripts because these scripts necessary setup environments itself. Also, these scripts do many checks of the GPU/Display/Xorg/Java/etc. before starting PSP application, remove cache and previous sessions, and do not allow to start PSP with at least one failed check.<br>
+
+    ✅ Therefore, it is recommended to start PSP application using these scripts.
+    
+    Copy following scripts to the PSP VM in the `psp` folder:
+    - [psp-common.sh](./scripts/psp-common.sh) 
+    - [psp.env](./scripts/psp.env)
+    - [startup-psp.sh](./scripts/startup-psp.sh) 
+
+    Set them permissions for executing:
+    ```
+    ~$ cd scripts/
+    ~/scripts$ sudo chmod +x *.sh
+    ```
+
+    Now, the PSP application can be run from everywhere using `startup-psp.sh` script, for example:
+    ```
+    ~/psp$ ./startup-psp.sh
+    /home$ ~/psp/startup-psp.sh
+    /usr/local/bin$ ~/psp/startup-psp.sh
+    ```
+
+    Execute `startup-psp.sh` script and check that the PSP application is started correctly, the last line of the output should be:
+    ```
+    [INFO] EntryPoint - Streaming application is runnung.
+    ```
+    Also, the PSP application can be checked by opening in the Web Browser on the PC without PT VPN and SkyHigh service. To check open following URL in your browser:
+    ```
+    http://[Public IP of AWS PSP VM]:8080/psp/?username=User01&password=Pass123456&real=0
+    ```
+    The "Public IP of AWS PSP VM" can be found in your AWS EC2 console.
+
+    ✅ The PT Game through streaming should be displayed, sound should be played, the game can be played, and the games should be changed using swipes or buttons (if a desktop Web Browser is used).
+
+    ![alt text](img/info.png) Information:
+    - The `psp-common.sh` is a library: it only defines functions and       sets variables. It does not call them. It contains "preflight" checks. The `startup-psp.sh` uses variables and function from `psp-common.sh`.<br>
+        Following commands should be executed as one batch in the `psp` folder:
+        ```
+        source ./psp-common.sh
+        psp_apply_exports
+        psp_preflight
+        ```
+        The output should contains information about all GPU/Display/Xorg/Java/checks, for example, [preflight.log](./logs/preflight.log).
+    - The PSP application is started using scripts with following default `JAVA_OPTS`:
+        ```
+        JAVA_OPTS=-Xms512m -Xmx2g -Djava.awt.headless=false -Dtomcat.port=8080
+        ```
+        These options can be changed via `psp.env` file.<br>
+        Just uncomment necessary option and specify value that you want to use in the `JAVA_OPTS` for PSP application. It might be helpful for production. Then simply rerun PSP.
+    - The `startup-psp.sh` is a main script to start PSP application.<br>
+        It uses the "preflight" checks from `psp-common.sh` file, clears cache and starts PSP application.<br>
+        Example of the log file can be found here: [psp.log](./logs/psp.log).
+
+7. Create PSP service to automatically start PSP application with AWS PSP VM<br>
+    On the production, the PSP application should be automatically started when hosted VM is started. Also, the PSP application should be automatically restarted after crash.<br>
+    The new PSP service should be created to achieve these goal.<br>
+
+    The following scripts to create and manage new PSP service should be copied to the `psp` folder of the AWS PSP VM:
+    - [install-psp-service.sh](./scripts/install-psp-service.sh) 
+    - [psp.service.template](./scripts/psp.service.template) 
+
+    Set permission to the `install-psp-service.sh` for executing:
+    ```
+    ~/psp$ chmod +x install-psp-service.sh
+    ```
+    
+    Install new PSP service:
+    ```
+    ~/psp$ ./install-psp-service.sh
+    ```
+    The PSP service will be started after AWS PSP VM reboot.<br>
+
+    Or install PSP service and start it right now:
+    ```
+    ~/psp$ ./install-psp-service.sh --start
+    ```
+
+    If it is necessary, the custom path of the PSP application and specific user for the service can be specified:
+    ```
+    ~/psp$ ./install-psp-service.sh --user ubuntu --home /home/ubuntu/psp
+    ```
+
+    ![alt text](img/info.png) The PSP Service control:
+    ```
+    # Status of the PSP service
+    ~$ sudo systemctl status psp.service --no-pager
+
+    # Start PSP service
+    ~$ sudo systemctl start psp.service
+
+    # Stop PSP service
+    ~$ sudo systemctl stop psp.service
+
+    # Restart PSP service
+    ~$ sudo systemctl restart psp.service
+
+    # Disable autorun of the PSP service
+    ~$ sudo systemctl disable --now psp.service
+
+    # Remove PSP service (after disabling autorun)
+    ~$ sudo rm /etc/systemd/system/psp.service
+    ~$ sudo systemctl daemon-reload
+    ```
+
+    ![alt text](img/info.png) Checking logs of the PSP service (PSP application):
+    ```
+    # Show latest log lines and see log in real time
+    ~$ journalctl -u psp.service -f
+
+    # Show full log with pager at current time (no realtime)
+    ~$ journalctl -u psp.service -b
+    
+    # Show full log without pager at current time (no realtime)
+    ~$ journalctl -u psp.service -b --no-pager
+    ```
+
+    **Services Verification step**:
+    - Reboot AWS PSP VM:
+        ```
+        sudo reboot
+        ```
+
+    - Verify that `Xorg` and `PSP` services started automatically after reboot using following commands:
+        ```
+        ~$ sudo systemctl status xorg-nvidia.service --no-pager
+        ~$ sudo systemctl status psp.service --no-pager
+        ```
+        The output of both commands should contain expected text: `Active: active (running)`, and no errors should be displayed in the `Main PID` section.<br>
+        
+        Also, the log of the PSP service can be verified using the following commands:
+        ```
+        ~$ journalctl -u psp.service -f
+        ~$ journalctl -u psp.service -b --no-pager
+        ```
+        The log should not contain fatal errors, the `[INFO] EntryPoint - Streaming application is runnung` line should be present.
+
+    - Check PSP application through the Web Browser. Open the URL:
+        ```
+        http://[Public IP of AWS PSP VM]:8080/psp/?username=User01&password=Pass123456&real=0
+        ```
+        The "Public IP of AWS PSP VM" can be found in your AWS EC2 console.
+
+        ✅ The PT Game through streaming should be displayed, sound should be played, the game can be played, and the games should be changed using swipes or buttons (if a desktop Web Browser is used).
+
+    ![alt text](img/info.png) Note: the PSP service should be restarted after redeploying new version of the PSP application (`psp.jar`) using following command:
+    ```
+    ~$ sudo systemctl restart psp.service
+    ```
+    
+8. Optional. Start Embedded Tomcat on the 80 port instead of 8080 port on Production environment.<br>
+    **TODO!** Details can be added later.<br>
+    Options:
+    1. Grant the JVM permission to bind low ports (less than 1024) without running PSP as `root` using `CAP_NET_BIND_SERVICE`.
+    2. Reverse proxy (common in production). The Nginx/Caddy/ALB proxies listens on 80 (and 443), and forwards packets to Tomcat on 8080. Good solution if we later will use TLS on 443 port. Looks like a best solution now.
+    3. Use IP Tables redirect from 80 to 8080 port on the AWS PPSP VM. Works for external traffic; needs persistence across reboots (`iptables-persistent` or `netfilter` rules). Less clear than 1 or 2 solution.
+    4. Run PSP as `root`. Technically should work; but strongly not recommended to run CEF + WebRTC as `root`.
+
+9. Optional. Enable TLS, add SSL certificate.<br>
+    **TODO!** Details can be added later.<br>
+    The PSP application is ready to use TLS and SSL certificate (need to be checked on the AWS PSP VM).<br>
+    However, we do not have signed PT CA Certificate to use, we have just self-signed certificate for testing.<br>
+    Installation of the signed PT CA Certificate is a separate procedure for system administrators (partially described here: https://confluence.playtech.corp/spaces/CAS/pages/345938921/Playtech+Web+Server+certificates+-+Procedure).
+    Also, enabling TLS might be not necessary, it depends on the final production environment (for example, if AWS PSP VMs will be executed behind Reverse proxy services).
+
+
+
+
+
+    
+
+
+
+
+
+    
+    
 
 
 
@@ -1349,10 +2025,8 @@ To build PSP application from source code you should begin by installing the bui
 
 
 
-TODO
-Try to build JCEF and Streaming
 
-Try to start WAR file on the Tomcat 11 and access it from Windows OS.
+
 
 
 

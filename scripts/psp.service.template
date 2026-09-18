@@ -1,0 +1,41 @@
+[Unit]
+Description=Playtech Streaming Platform (PSP)
+Documentation=file://@PSP_HOME@/startup-psp.sh
+After=network-online.target xorg-nvidia.service
+Wants=network-online.target
+Requires=xorg-nvidia.service
+
+[Service]
+Type=simple
+User=@PSP_USER@
+Group=@PSP_GROUP@
+WorkingDirectory=@PSP_HOME@
+
+Environment=DISPLAY=:0
+Environment=__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json
+Environment=NO_PROXY=localhost,127.0.0.1
+Environment=no_proxy=localhost,127.0.0.1
+# Do not clear JCEF cache on every reboot (set CLEAR_CEF_CACHE=1 in psp.env to override)
+Environment=CLEAR_CEF_CACHE=0
+Environment=PSP_HOME=@PSP_HOME@
+
+# Temurin/OpenJDK are usually on default PATH; extend if java is not found
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ExecStart=@PSP_HOME@/startup-psp.sh
+
+Restart=on-failure
+RestartSec=15
+TimeoutStartSec=180
+TimeoutStopSec=60
+
+# CEF/JCEF child processes
+KillMode=mixed
+KillSignal=SIGTERM
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=psp
+
+[Install]
+WantedBy=multi-user.target

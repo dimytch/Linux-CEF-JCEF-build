@@ -1,0 +1,30 @@
+~/psp$ source ./psp-common.sh
+        psp_apply_exports
+        psp_preflight
+
+--- Apply exports... ---
+DISPLAY=:0
+__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json
+
+=== PRE-FLIGHT Check ===
+DISPLAY=:0
+PSP_HOME=/home/ubuntu/psp
+
+--- java ---
+openjdk version "21.0.12.1" 2026-08-18 LTS
+OpenJDK Runtime Environment Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS)
+
+--- nvidia-smi ---
+GPU:
+Tesla T4, 595.91.07, 0x00, 15360 MiB, 14847 MiB, 0 %, 0 %, 1, 2026/09/17 12:01:07.151
+Process:
+# gpu         pid   type     sm    mem    enc    dec    jpg    ofa    command
+# Idx           #    C/G      %      %      %      %      %      %    name
+    0        894     G      -      -      -      -      -      -    Xorg
+
+--- Check Xorg... ---
+root         894  0.0  0.4 25424312 69064 tty7   Ssl+ 07:23   0:00 /usr/lib/xorg/Xorg :0 vt7 -config /etc/X11/xorg.conf -ac -noreset -nolisten tcp
+
+--- glxinfo vendors ---
+OpenGL vendor string: NVIDIA Corporation
+OpenGL renderer string: Tesla T4/PCIe/SSE2

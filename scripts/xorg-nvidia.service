@@ -1,0 +1,23 @@
+[Unit]
+Description=NVIDIA Xorg on :0 for PSP
+After=network.target
+Conflicts=xrdp.service lightdm.service gdm3.service sddm.service
+
+[Service]
+Type=simple
+Environment=DISPLAY=:0
+
+ExecStartPre=-/bin/systemctl stop xrdp.service lightdm.service gdm3.service sddm.service
+ExecStartPre=-/bin/systemctl stop xorg-manual.service
+ExecStartPre=-/usr/bin/pkill -9 -x Xorg
+ExecStartPre=-/bin/sh -c 'rm -f /tmp/.X0-lock /tmp/.X11-unix/X0'
+ExecStartPre=/bin/test -f /etc/X11/xorg.conf
+
+ExecStart=/usr/lib/xorg/Xorg :0 vt7 -config /etc/X11/xorg.conf -ac -noreset -nolisten tcp
+
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target
