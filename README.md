@@ -1,6 +1,9 @@
 # TOC
 1. [Build CEF and JCEF for the Linux platform](#build-cef-jcef)
-2. [Build CEF](#build-cef)
+    1. [Chromium Embedded Framework (CEF) installation and building](#build-cef)
+    2. [Java Chromium Embedded Framework (JCEF) installation and building](#build-jcef)
+2. [PSP application building (on the WSL Linux or separate VM)](#psp-build)
+3. [Deploying and Running the PSP application (on the AWS Ubuntu instance)](#psp-deploy-run-aws)
 
 <a name="build-cef-jcef"></a>
 # Build CEF and JCEF for the Linux platform
@@ -9,7 +12,7 @@
 - The Windows 11 Enterprise 23H2 with enabled Virtualization will be used as base OS.
 - The Windows Subsystem for Linux version 2 (aka WSL2) will be used for running Linux OS for the building. 
 
-    The Windows Subsystem for Linux (WSL) is a Microsoft feature that lets you run a native GNU/Linux environment—including command-line tools, utilities, and applications—directly on Windows without needing a traditional virtual machine or dual-boot setup.
+    The Windows Subsystem for Linux (WSL) is a Microsoft feature that lets you run a native GNU/Linux environment including command-line tools, utilities, and applications directly on Windows without needing a traditional virtual machine or dual-boot setup.
     Key Features:
     - Seamless Integration: Run Linux distributions (like Ubuntu, Debian, or Kali) directly from your Windows desktop.
     - Optimized Performance: Uses a lightweight Hyper-V virtualized environment for the Linux kernel.
@@ -493,6 +496,7 @@ To create binary distribution package open `tools` folder and run `make_distrib.
 ---
 <br><br>
 
+<a name="build-jcef"></a>
 ## Java Chromium Embedded Framework (JCEF) installation and building
 The following information and official instruction with necessary modification were used for JCEF installation and building:
 - https://github.com/chromiumembedded/java-cef
@@ -988,6 +992,7 @@ Details can be found in the `Step 6` but the `run.sh` Bash script should be exec
 ---
 <br><br>
 
+<a name="psp-build"></a>
 # PSP application building (on the WSL Linux or separate VM)
 To build PSP application from source code you should begin by installing the build tools and application server for Linux operating system.<br> 
     
@@ -1321,10 +1326,11 @@ To build PSP application from source code you should begin by installing the bui
         This `PSP` JAR file can be executed without `Tomcat` server using `JAVA`.<br>
         We will use this way below.
     
-    - ![alt text](img/info.png) Now the PSP application is built and ready deploy and start.<br><br>
+    - ![alt text](img/info.png) Now the PSP application is built and ready deploy and start.<br>
+----
+<br>
 
-
-
+<a name="psp-deploy-run-aws"></a>
 # Deploying and Running the PSP application (on the AWS Ubuntu instance)
 We will use a separate AWS Ubuntu PSP VM for running the PSP application. It will allow us to increase the time to scale for further PSP application usage in production.
 
